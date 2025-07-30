@@ -14,6 +14,8 @@ interface ChatInputProps {
   showEmojiPicker: boolean;
   setShowEmojiPicker: (show: boolean) => void;
   handleEmojiSelect: (emoji: any) => void;
+  replyToMessage?: any;
+  setReplyToMessage?: (msg: any) => void;
 }
 
 const ChatInput: React.FC<ChatInputProps> = ({
@@ -25,6 +27,8 @@ const ChatInput: React.FC<ChatInputProps> = ({
   showEmojiPicker,
   setShowEmojiPicker,
   handleEmojiSelect,
+  replyToMessage,
+  setReplyToMessage,
 }) => {
   const emojiBtnRef = useRef<HTMLButtonElement>(null);
   const emojiPickerRef = useRef<HTMLDivElement>(null);
@@ -47,6 +51,12 @@ const ChatInput: React.FC<ChatInputProps> = ({
 
   return (
     <>
+      {replyToMessage && (
+        <div className={styles.composerReplyPreview}>
+          <div className={styles.composerReplyContent}>{replyToMessage.content}</div>
+          <button className={styles.composerReplyCloseBtn} onClick={() => setReplyToMessage && setReplyToMessage(null)} title="Cancel reply">×</button>
+        </div>
+      )}
       {file && (
         <div className={styles.composerPreviewWrapper}>
           {file.type.startsWith('image/') ? (

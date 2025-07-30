@@ -12,7 +12,7 @@ import ConfirmationModal from '@/components/ConfirmationModal/ConfirmationModal'
 import { formatTo12Hour, generateInitials, isSameMinute } from '@/utils/helperFunctions';
 
 interface MessageListProps {
-  messages: Message[];
+   messages: Message[];
   myUserId: string;
   selectedUser: User | null;
   onReact: (messageId: string, emoji: string) => void;
@@ -29,6 +29,9 @@ interface MessageListProps {
   chatEndRef?: React.RefObject<HTMLDivElement>;
   onScrollToBottom?: () => void;
   onDelete?: (messageId: string) => void;
+  onReply?: (messageId: string) => void;
+  onThreadReply?: (messageId: string) => void;
+  onEdit?: (messageId: string) => void;
 }
 
 const emojiOptions = ['👍', '😂', '❤️', '😮', '😢', '🎉'];
@@ -51,6 +54,9 @@ const MessageList: React.FC<MessageListProps> = ({
   chatEndRef,
   onScrollToBottom,
   onDelete,
+  onReply,
+  onThreadReply,
+  onEdit,
 }) => {
   const [contextMenu, setContextMenu] = useState<{
     open: boolean;
@@ -152,6 +158,12 @@ const MessageList: React.FC<MessageListProps> = ({
         messageId: contextMenu.messageId,
         messageContent: message?.content || 'this message',
       });
+    } else if (action === 'reply' && onReply) {
+      onReply(contextMenu.messageId);
+    } else if (action === 'threadReply' && onThreadReply) {
+      onThreadReply(contextMenu.messageId);
+    } else if (action === 'edit' && onEdit) {
+      onEdit(contextMenu.messageId);
     }
     
     setContextMenu(prev => ({ ...prev, open: false }));
@@ -179,7 +191,7 @@ const MessageList: React.FC<MessageListProps> = ({
     <div>
       {messages && messages.map((msg, index) => {
         const isMine = msg?.senderId === myUserId;
-        const allLines = msg?.content?.split('\n').map(line => line.trim());
+        const allLines = (msg?.content || '').split('\n').map(line => line.trim());
         const supportedLinks = allLines.filter(line => /https?:\/\//.test(line));
         const mediaLink = supportedLinks[0];
         const textBelow = allLines.filter(line => !supportedLinks.includes(line) && line !== '').join(' ').replace(/\s+/g, ' ').trim();
@@ -201,6 +213,24 @@ const MessageList: React.FC<MessageListProps> = ({
         const avatar = !isMine ? selectedUser?.avatar : undefined;
         const initials = !isMine && selectedUser ? selectedUser.name.split(' ').map((n: string) => n[0]).join('').toUpperCase() : '';
 
+        // Render replied message bubble if this message is a reply
+        let repliedMessage: any = undefined;
+        if (msg.replyToMessageId) {
+          if (typeof msg.replyToMessageId === 'object' && 'content' in msg.replyToMessageId) {
+            repliedMessage = msg.replyToMessageId;
+          } else if (typeof msg.replyToMessageId === 'string') {
+            repliedMessage = messages.find(m => m.id === msg.replyToMessageId || m._id === msg.replyToMessageId);
+          }
+        }
+
+        const bubbleStyle = {
+          marginTop: isFirstInGroup ? 6 : 1,
+          marginBottom: isLastInGroup ? 8 : 1,
+          position: 'relative',
+          display: 'flex',
+          flexDirection: 'column',
+        };
+
         if (isMine) {
           return (
             <div
@@ -208,11 +238,7 @@ const MessageList: React.FC<MessageListProps> = ({
               className={styles.chatMsgRowMine}
               style={{
                 alignItems: 'flex-end',
-                marginTop: isFirstInGroup ? 6 : 1,
-                marginBottom: isLastInGroup ? 8 : 1,
-                position: 'relative',
-                display: 'flex',
-                flexDirection: 'column',
+                ...bubbleStyle,
               }}
             >
               
@@ -288,6 +314,14 @@ const MessageList: React.FC<MessageListProps> = ({
                     })}
                   </div>
                 )}
+                {/* Replied message bubble INSIDE the blue bubble, no border, no margin */}
+                {repliedMessage && (
+                  <div className={styles.repliedMessageBubble} style={{ background: '#f5f5f7', borderRadius: 8, padding: '6px 10px', marginBottom: 0, maxWidth: '100%' }}>
+                    <div style={{ fontSize: 13, color: '#222', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                      {repliedMessage.content}
+                    </div>
+                  </div>
+                )}
                 <div
                   className={styles.myMsg}
                   style={{
@@ -311,7 +345,9 @@ const MessageList: React.FC<MessageListProps> = ({
                       />
                     )}
                     {textBelow && (
-                      <div className={styles.chatMsgTextBelow}>{textBelow}</div>
+                      <div className={styles.chatMsgTextBelow}>
+                        {textBelow} {msg.edited && <span style={{ color: '#888', fontSize: 12, marginLeft: 4 }}>(edited)</span>}
+                      </div>
                     )}
                     {mediaLink && (
                       <div className={styles.chatMsgTextBelow}>{mediaLink}</div>
@@ -493,6 +529,14 @@ const MessageList: React.FC<MessageListProps> = ({
                       })}
                     </div>
                   )}
+                  {/* Replied message bubble INSIDE the grey bubble, no border, no margin */}
+                  {repliedMessage && (
+                    <div className={styles.repliedMessageBubble} style={{ background: '#f5f5f7', borderRadius: 8, padding: '6px 10px', marginBottom: 0, maxWidth: '100%' }}>
+                      <div style={{ fontSize: 13, color: '#222', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        {repliedMessage.content}
+                      </div>
+                    </div>
+                  )}
                   <div
                     className={styles.otherMsg}
                     style={{
@@ -515,7 +559,9 @@ const MessageList: React.FC<MessageListProps> = ({
                         />
                       )}
                       {textBelow && (
-                        <div className={styles.chatMsgTextBelow}>{textBelow}</div>
+                        <div className={styles.chatMsgTextBelow}>
+                          {textBelow} {msg.edited && <span style={{ color: '#888', fontSize: 12, marginLeft: 4 }}>(edited)</span>}
+                        </div>
                       )}
                       {mediaLink && (
                         <div className={styles.chatMsgTextBelow}>{mediaLink}</div>

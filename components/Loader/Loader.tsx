@@ -1,5 +1,5 @@
 import React from 'react';
-import './Loader.css';
+import styles from './Loader.module.css'; 
 
 interface LoaderProps {
   visible?: boolean;
@@ -9,10 +9,10 @@ interface LoaderProps {
 const Loader: React.FC<LoaderProps> = ({ visible, message }) => {
   if (!visible) return null;
   return (
-    <div className="loader-overlay">
-      <div className="loader-container">
-        <div className="loader-spinner" />
-        {message && <div className="loader-message">{message}</div>}
+    <div className={styles['loader-overlay']}>
+      <div className={styles['loader-container']}>
+        <div className={styles['loader-spinner']} />
+        {message && <div className={styles['loader-message']}>{message}</div>}
       </div>
     </div>
   );

@@ -58,6 +58,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
         if (token && userId) {
           dispatch(setUser({ token, name, id: userId }));
+          await new Promise(resolve => setTimeout(resolve, 100));
         }
         toast.success(response.data?.message || 'Login successful!');
         return response;

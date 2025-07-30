@@ -2,7 +2,7 @@ import React, { useRef, useState, useEffect } from 'react';
 import { FaBars, FaPlus, FaSmile, FaArrowDown, FaSearch } from 'react-icons/fa';
 import { MdOutlineEdit } from "react-icons/md";
 import { HiOutlineUserGroup } from "react-icons/hi";
-import { MdOutlineDarkMode, MdPersonOutline,MdOutlineKeyboardArrowDown } from "react-icons/md";
+import { MdOutlineDarkMode, MdPersonOutline, MdOutlineKeyboardArrowDown } from "react-icons/md";
 //@ts-ignore
 import styles from './ChatScreen.module.css';
 import { useForm } from 'react-hook-form';
@@ -59,6 +59,8 @@ const ChatScreen: React.FC = () => {
   const [reactionRemoveOpenId, setReactionRemoveOpenId] = useState<string | null>(null);
   const { socket } = useSocketContext();
   const [socketConnected, setSocketConnected] = useState<boolean>(false);
+  const [editingMessage, setEditingMessage] = useState<Message | null>(null);
+  const [replyToMessage, setReplyToMessage] = useState<Message | null>(null);
   const reconnectAttempts = useRef(0);
   const maxReconnectAttempts = 5;
   const { mode, toggleTheme } = useTheme();
@@ -406,12 +408,25 @@ const ChatScreen: React.FC = () => {
       return;
     }
     if (!selectedUser || !input.trim()) return;
+    if (editingMessage) {
+      socket.emit('edit_message', {
+        _id: editingMessage._id,
+        newContent: input,
+        editorId: myUserId,
+      });
+      setEditingMessage(null);
+      setInput('');
+      setReplyToMessage(null);
+      return;
+    }
     socket.emit('send_message', {
       senderId: myUserId,
       receiverId: selectedUser.id,
       content: input,
+      replyToMessageId: replyToMessage ? (replyToMessage._id || replyToMessage.id) : null
     });
     setInput('');
+    setReplyToMessage(null);
   };
 
   const handleEmojiSelect = (emoji: any) => {
@@ -422,10 +437,12 @@ const ChatScreen: React.FC = () => {
   const handleReply = (messageId: string) => {
     const message = messages.find(m => m.id === messageId);
     if (message) {
-      setInput(`Replying to: ${message.content} `);
-      toast.info('Reply mode activated');
+      setInput('');
+      setReplyToMessage(message);
     }
   };
+
+
 
   const handleThreadReply = (messageId: string) => {
     const message = messages.find(m => m.id === messageId);
@@ -436,10 +453,10 @@ const ChatScreen: React.FC = () => {
   };
 
   const handleEditMessage = (messageId: string) => {
-    const message = messages.find(m => m.id === messageId);
+    const message = messages.find(m => m.id === messageId || m._id === messageId);
     if (message) {
       setInput(message.content);
-      toast.info('Edit mode activated');
+      setEditingMessage(message);
     }
   };
 
@@ -452,9 +469,6 @@ const ChatScreen: React.FC = () => {
 
   const handleDeleteMessage = (messageId: string) => {
     const message = messages.find(m => m.id === messageId);
-
-    toast.info(`Message "${message?.content}" deleted.`);
-
     // Optimistically remove the message from UI
     setMessages(prev => prev.filter(msg => msg.id !== messageId));
 
@@ -542,7 +556,7 @@ const ChatScreen: React.FC = () => {
           onSettings={() => setShowSettings(true)}
         // onMenu={...} // Add if you want to handle menu
         />
-        <div 
+        <div
           ref={chatBodyRef}
           className={styles.chatBody}
           style={{ flex: 1, overflowY: 'auto', padding: '0px 10px 12px 10px' }}
@@ -565,6 +579,9 @@ const ChatScreen: React.FC = () => {
             chatEndRef={chatEndRef}
             onScrollToBottom={() => chatEndRef.current?.scrollIntoView({ behavior: 'smooth' })}
             onDelete={handleDeleteMessage}
+            onReply={handleReply}
+            onThreadReply={handleThreadReply}
+            onEdit={handleEditMessage}
           />
         </div>
         <ChatInput
@@ -576,6 +593,8 @@ const ChatScreen: React.FC = () => {
           showEmojiPicker={showEmojiPicker}
           setShowEmojiPicker={setShowEmojiPicker}
           handleEmojiSelect={handleEmojiSelect}
+          replyToMessage={replyToMessage}
+          setReplyToMessage={setReplyToMessage}
         />
         {/* Scroll to bottom button */}
         {showScrollToBottom && (
@@ -592,7 +611,7 @@ const ChatScreen: React.FC = () => {
             aria-label="Scroll to latest message"
             title="Scroll to latest message"
           >
-            <MdOutlineKeyboardArrowDown   style={{ color: '#1976d2',fontSize: '27px'}} />
+            <MdOutlineKeyboardArrowDown style={{ color: '#1976d2', fontSize: '27px' }} />
           </button>
         )}
       </main>

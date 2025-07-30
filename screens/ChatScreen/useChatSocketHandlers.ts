@@ -1,3 +1,4 @@
+
 import { useEffect } from 'react';
 import { Message, User } from './ChatScreen.types';
 
@@ -10,7 +11,7 @@ export function useChatSocketHandlers({
   setUnreadCounts,
   setTypingUsers,
   messages,
-  users, // <-- add this
+  users, 
 }: {
   socket: any;
   myUserId: string;
@@ -20,32 +21,43 @@ export function useChatSocketHandlers({
   setUnreadCounts: React.Dispatch<React.SetStateAction<{ [userId: string]: number }>>;
   setTypingUsers: React.Dispatch<React.SetStateAction<{ [userId: string]: boolean }>>;
   messages: Message[];
-  users: User[]; // <-- add this
+  users: User[]; 
 }) {
   // Connection events
   useEffect(() => {
-    if (!socket) return;
-    const handleConnect = () => {
-      console.log('✅ Connected:', socket.id);
-      setTimeout(() => {
-        socket.emit('join_room', myUserId);
-      }, 500);
-    };
-    const handleConnectError = (err: any) => {
-      console.error('❌ Connection Error:', err.message);
-    };
-    socket.on('connect', handleConnect);
-    socket.on('connect_error', handleConnectError);
-    return () => {
-      socket.off('connect', handleConnect);
-      socket.off('connect_error', handleConnectError);
-    };
-  }, [socket, myUserId]);
+  if (!socket) return;
+  
+  const handleConnect = () => {
+    console.log('✅ Connected:', socket.id);
+    // Remove timeout and emit immediately
+    socket.emit('join_room', myUserId);
+  };
+
+  const handleConnectError = (err: any) => {
+    console.error('❌ Connection Error:', err.message);
+    // Attempt to reconnect on error
+    socket.connect();
+  };
+
+  if (socket.connected) {
+    // If already connected, join room immediately
+    socket.emit('join_room', myUserId);
+  }
+
+  socket.on('connect', handleConnect);
+  socket.on('connect_error', handleConnectError);
+
+  return () => {
+    socket.off('connect', handleConnect);
+    socket.off('connect_error', handleConnectError);
+  };
+}, [socket, myUserId]);
 
   // Incoming messages
   useEffect(() => {
     if (!socket) return;
     const handleReceiveMessage = (data: any) => {
+      console.log(data, "receivemessage-------------->");
       if (
         selectedUser &&
         (
@@ -269,4 +281,18 @@ export function useChatSocketHandlers({
       socket.off('last_message_updated', handleLastMessageUpdated);
     };
   }, [socket, setUsers]);
+
+  // Listen for message_edited event from backend
+  useEffect(() => {
+    if (!socket) return;
+    const handleMessageEdited = (updatedMessage: any) => {
+      setMessages(prevMsgs => prevMsgs.map(msg =>
+        (msg._id === updatedMessage._id) ? { ...msg, content: updatedMessage.content || updatedMessage.newContent, edited: true } : msg
+      ));
+    };
+    socket.on('message_edited', handleMessageEdited);
+    return () => {
+      socket.off('message_edited', handleMessageEdited);
+    };
+  }, [socket, setMessages]);
 }

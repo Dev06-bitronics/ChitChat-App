@@ -17,17 +17,23 @@ export interface User {
 
 export interface Message {
   id: string;
+  _id: string;
   senderId: string;
+  receiverId: string;
+  conversationId?: string;
   content: string;
   type: 'text' | 'image' | 'file' | 'emoji' | 'audio' | 'video';
   timestamp?: string;
   createdAt?: string;
   updatedAt?: string;
+  deliveredAt?: string;
+  seenAt?: string;
   fileUrl?: string;
   fileName?: string;
   fileType?: string;
   fileSize?: number;
-  reactions?: { [userId: string]: string };
+  reactions?:  string | null;
+  [key: string]: any;
   seen?: boolean;
   clientId?: string;
   status?: 'sent' | 'delivered' | 'seen';

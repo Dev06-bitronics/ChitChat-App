@@ -21,7 +21,7 @@ const getBaseUrl = () => {
   if (typeof process !== 'undefined' && process.env && process.env.NEXT_PUBLIC_BASE_URL) {
     return process.env.NEXT_PUBLIC_BASE_URL;
   }
-  return 'http://192.168.0.7:3001/';
+  return 'http://192.168.0.5:3001/';
 };
 
 export const BASE_URL = getBaseUrl();
