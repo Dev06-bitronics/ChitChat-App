@@ -24,6 +24,14 @@ export const GET_PROFILE_DETAILS = async () => {
     return await apiClient.get(`api/v1/users/me`);
 };
 
+export const GROUP_ALL_USERS = async () => {
+    return await apiClient.get(`api/v1/group/users`);
+};
+
+export const ADD_USERS_TO_GROUP = async (conversationId: any) => {
+    return await apiClient.get(`api/v1/group/${conversationId}/available-users`);
+};
+
 // export const getChatConversation = async (userId: string) => {
 //   return await apiClient.post('chat/conversation', { userId });
 // };

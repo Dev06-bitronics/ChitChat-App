@@ -16,6 +16,8 @@ interface ChatInputProps {
   handleEmojiSelect: (emoji: any) => void;
   replyToMessage?: any;
   setReplyToMessage?: (msg: any) => void;
+  disabled?: boolean;
+  disabledMessage?: string;
 }
 
 const ChatInput: React.FC<ChatInputProps> = ({
@@ -29,6 +31,8 @@ const ChatInput: React.FC<ChatInputProps> = ({
   handleEmojiSelect,
   replyToMessage,
   setReplyToMessage,
+  disabled = false,
+  disabledMessage = "You cannot send messages",
 }) => {
   const emojiBtnRef = useRef<HTMLButtonElement>(null);
   const emojiPickerRef = useRef<HTMLDivElement>(null);
@@ -76,12 +80,18 @@ const ChatInput: React.FC<ChatInputProps> = ({
           )}
         </div>
       )}
-      <div className={styles.chatInputArea}>
+      {disabled && (
+        <div className={styles.disabledInputMessage}>
+          {disabledMessage}
+        </div>
+      )}
+      <div className={`${styles.chatInputArea} ${disabled ? styles.disabled : ''}`}>
         <button
           type="button"
           className={styles.chatFileLabel}
           title="Attach"
-          onClick={() => document.getElementById('fileInput')?.click()}
+          onClick={() => !disabled && document.getElementById('fileInput')?.click()}
+          disabled={disabled}
         >
           <FaPlus color="#747881" size={20} />
           <input
@@ -92,28 +102,31 @@ const ChatInput: React.FC<ChatInputProps> = ({
               if (e.target.files && e.target.files[0]) setFile(e.target.files[0]);
             }}
             accept="image/*,audio/*,video/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt"
+            disabled={disabled}
           />
         </button>
         <div className={styles.chatInputWrapper}>
           <input
             type="text"
-            placeholder="Type your message"
+            placeholder={disabled ? disabledMessage : "Type your message"}
             value={input}
-            onChange={e => setInput(e.target.value)}
+            onChange={e => !disabled && setInput(e.target.value)}
             className={`${styles.chatInput} ${styles.chatInputField}`}
-            onKeyDown={e => e.key === 'Enter' && onSend()}
+            onKeyDown={e => e.key === 'Enter' && !disabled && onSend()}
+            disabled={disabled}
           />
           <div style={{ position: 'relative', display: 'inline-block' }}>
             <button
               type="button"
               className={`${styles.emojiBtn} ${styles.chatEmojiBtn}`}
-              onClick={() => setShowEmojiPicker((v) => !v)}
+              onClick={() => !disabled && setShowEmojiPicker(!showEmojiPicker)}
               title="Add emoji"
               ref={emojiBtnRef}
+              disabled={disabled}
             >
               <FaSmile color="#747881" />
             </button>
-            {showEmojiPicker && (
+            {showEmojiPicker && !disabled && (
               <div className={styles.emojiPickerWrapper} ref={emojiPickerRef}>
                 <Picker onEmojiSelect={handleEmojiSelect} theme="light" />
               </div>
@@ -121,8 +134,9 @@ const ChatInput: React.FC<ChatInputProps> = ({
           </div>
           <button
             className={`${styles.sendBtn} ${styles.chatSendBtn}`}
-            onClick={onSend}
+            onClick={() => !disabled && onSend()}
             title="Send"
+            disabled={disabled}
           >
             <MdSend style={{ color: '#fff' }} size={25} />
           </button>

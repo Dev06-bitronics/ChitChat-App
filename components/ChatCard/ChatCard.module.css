@@ -49,6 +49,8 @@
   display: inline-block;
 }
 
+
+
 .avatarOnlineDot {
   position: absolute;
   top: 1px;
@@ -148,6 +150,28 @@
 .typingDots {
   animation: typingAnimation 1.4s infinite;
   display: inline-block;
+}
+
+/* In ChatCard.module.css */
+.groupBadge {
+  position: absolute;
+  bottom: -5px;
+  right: -5px;
+  background: var(--color-primary);
+  color: white;
+  border-radius: 50%;
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  border: 2px solid white;
+}
+
+/* Add this to your existing styles */
+.avatarWrapper {
+  position: relative;
 }
 
 @keyframes typingAnimation {

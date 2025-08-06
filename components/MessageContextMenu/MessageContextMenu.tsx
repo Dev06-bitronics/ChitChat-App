@@ -17,9 +17,10 @@ interface MessageContextMenuProps {
   onEdit: () => void;
   onPin: () => void;
   onDelete: () => void;
+  isPinned?: boolean;
 }
 
-const MessageContextMenu: React.FC<MessageContextMenuProps> = ({ open, x, y, isOwnMessage, onClose, onReply, onThreadReply, onEdit, onPin, onDelete }) => {
+const MessageContextMenu: React.FC<MessageContextMenuProps> = ({ open, x, y, isOwnMessage,isPinned = false, onClose, onReply, onThreadReply, onEdit, onPin, onDelete}) => {
   if (!open) return null;
   return (
     <div className={styles.contextMenuOverlay} onClick={onClose}>
@@ -49,8 +50,8 @@ const MessageContextMenu: React.FC<MessageContextMenuProps> = ({ open, x, y, isO
           </div>
         )}
         <div className={styles.contextMenuItem} onClick={onPin}>
-          <BsPin className={styles.contextMenuIcon} />
-          <span>Pin to Conversation</span>
+          <BsPin className={styles.contextMenuIcon} style={isPinned ? { transform: 'rotate(45deg)' } : undefined} />
+          <span>{isPinned ? 'Unpin Message' : 'Pin Message'}</span>
         </div>
         {isOwnMessage && (
           <div className={`${styles.contextMenuItem} ${styles.contextMenuItemDelete}`} onClick={onDelete}>

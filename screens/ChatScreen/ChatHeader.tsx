@@ -1,8 +1,10 @@
-import React from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { User } from './ChatScreen.types';
 //@ts-ignore
 import styles from './ChatScreen.module.css';
 import { generateInitials } from '@/utils/helperFunctions';
+
+
 
 interface ChatHeaderProps {
   selectedUser: User | null;
@@ -10,15 +12,44 @@ interface ChatHeaderProps {
   getLastSeenStatus: (user: User) => string;
   onSettings?: () => void;
   onMenu?: () => void;
+  myUserId?: string;
+  onLeaveGroup?: (groupId: string) => void;
+  onDeleteGroup?: (groupId: string) => void;
+  onAddUsers?: (groupId: string) => void;
+  onRemoveUsers?: (groupId: string) => void;
 }
 
-const ChatHeader: React.FC<ChatHeaderProps> = ({ selectedUser, unreadCount, getLastSeenStatus, onSettings, onMenu }) => {
+const ChatHeader: React.FC<ChatHeaderProps> = ({
+  selectedUser,
+  unreadCount,
+  getLastSeenStatus,
+  onSettings,
+  onMenu,
+  myUserId,
+  onLeaveGroup,
+  onDeleteGroup,
+  onAddUsers,
+  onRemoveUsers
+}) => {
+  const [showGroupSettings, setShowGroupSettings] = useState(false);
+  const settingsRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (settingsRef.current && !settingsRef.current.contains(event.target as Node)) {
+        setShowGroupSettings(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
   if (!selectedUser) return null;
   return (
     <div className={styles.chatHeader}>
       <div className={styles.avatarWrapper}>
-        {selectedUser.avatar ? (
-          <img src={selectedUser.avatar} alt={selectedUser.name} className={styles.avatar} />
+        {selectedUser?.avatar ? (
+          <img src={selectedUser?.avatar} alt={selectedUser?.name} className={styles.avatar} />
         ) : (
           <div style={{
             width: 40,
@@ -40,18 +71,89 @@ const ChatHeader: React.FC<ChatHeaderProps> = ({ selectedUser, unreadCount, getL
       </div>
       <div>
         <div className={styles.userName}>
-          {selectedUser.name}
+          {selectedUser?.name}
           {unreadCount > 0 && (
             <span className={styles.unreadBadge} style={{ marginLeft: 8 }}>{unreadCount}</span>
           )}
         </div>
         <div className={styles.userStatus}>{getLastSeenStatus(selectedUser)}</div>
       </div>
-      {onMenu && (
-        <button className={styles.settingsBtn} onClick={onMenu} title="Menu">
-          ☰
-        </button>
-      )}
+      <div className={styles.headerActions}>
+        {/* Group Settings Dropdown */}
+        {selectedUser?.isGroup && myUserId && (
+          <div className={styles.groupSettingsWrapper} ref={settingsRef}>
+            <button
+              className={styles.groupSettingsBtn}
+              onClick={() => setShowGroupSettings(!showGroupSettings)}
+              title="Group Settings"
+            >
+              ⚙️
+            </button>
+
+            {showGroupSettings && (
+              <div className={styles.groupSettingsDropdown}>
+                {/* Leave Group - Available for all members */}
+                {selectedUser?.participantsStatus?.[myUserId] === 'joined' && onLeaveGroup && (
+                  <button
+                    className={styles.dropdownItem}
+                    onClick={() => {
+                      onLeaveGroup(selectedUser._id);
+                      setShowGroupSettings(false);
+                    }}
+                  >
+                    � Leave Group
+                  </button>
+                )}
+
+                {/* Admin only options */}
+                {selectedUser?.createdBy === myUserId && (
+                  <>
+                    {onAddUsers && (
+                      <button
+                        className={styles.dropdownItem}
+                        onClick={() => {
+                          onAddUsers(selectedUser._id);
+                          setShowGroupSettings(false);
+                        }}
+                      >
+                        👥 Add Users
+                      </button>
+                    )}
+                    {onRemoveUsers && (
+                      <button
+                        className={styles.dropdownItem}
+                        onClick={() => {
+                          onRemoveUsers(selectedUser._id);
+                          setShowGroupSettings(false);
+                        }}
+                      >
+                        👤 Remove Users
+                      </button>
+                    )}
+                    {onDeleteGroup && (
+                      <button
+                        className={styles.dropdownItem + ' ' + styles.dangerItem}
+                        onClick={() => {
+                          onDeleteGroup(selectedUser._id);
+                          setShowGroupSettings(false);
+                        }}
+                      >
+                        �️ Delete Group
+                      </button>
+                    )}
+                  </>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+
+        {onMenu && (
+          <button className={styles.settingsBtn} onClick={onMenu} title="Menu">
+            ☰
+          </button>
+        )}
+      </div>
     </div>
   );
 };

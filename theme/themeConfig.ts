@@ -1,6 +1,6 @@
 export const themeConfig = {
   light: {
-    primary: '#1976d2', 
+    primary: '#1976d2',
     primaryGradient: 'linear-gradient(135deg, #1976d2 0%, #64b5f6 100%)',
     secondary: '#90caf9',
     background: '#f4f8fb',
@@ -15,8 +15,11 @@ export const themeConfig = {
     bubbleSelf: '#e3f2fd', // Sender bubble
     bubbleSelfText: '#fff',
     onlineDot: '#25d366',
-    reactionBg: '#e3f2fd', 
-    chatCardBackground: '#DBDDE1'
+    reactionBg: '#e3f2fd',
+    chatCardBackground: '#DBDDE1',
+    pinnedMessageBg: '#e8f5e9',
+    pinnedMessageBorder: '#81c784',
+    pinnedMessageText: '#2e7d32',
   },
   dark: {
     primary: '#1976d2',
@@ -33,7 +36,10 @@ export const themeConfig = {
     bubble: '#DBDDE1', // Receiver bubble
     bubbleSelf: '#e3f2fd', // Sender bubble
     bubbleSelfText: '#fff',
-    onlineDot: '#25d366', 
-    reactionBg: '#26304a', 
+    onlineDot: '#25d366',
+    reactionBg: '#26304a',
+    pinnedMessageBg: '#1b5e20',
+    pinnedMessageBorder: '#388e3c',
+    pinnedMessageText: '#a5d6a7',
   },
 };

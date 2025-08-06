@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 //@ts-ignore
 import styles from './FloatingMenuModal.module.css';
-import { USER_LOGOUT, GET_PROFILE_DETAILS } from '@/api/api';
+import { USER_LOGOUT, GET_PROFILE_DETAILS, GROUP_ALL_USERS } from '@/api/api';
 import { useDispatch } from 'react-redux';
 import { clearToken } from '@/redux/reducers/userReducer';
 import { toast } from 'react-toastify';
@@ -73,6 +73,22 @@ const FloatingMenuModal: React.FC<FloatingMenuModalProps> = ({
         name: user?.name || 'User',
         avatar: user?.avatar || '/logo.png'
       });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+   const fetchAllUsers = async () => {
+    try {
+      setLoading(true);
+      const response = await GROUP_ALL_USERS();
+      if (response && response.status === 200) {
+        console.log(response.data, "response.groupdata------------------->");
+        
+      }
+    } catch (error) {
+      console.error('Error fetching profile:', error);
+      
     } finally {
       setLoading(false);
     }

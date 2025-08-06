@@ -1,5 +1,4 @@
 import React, { useRef, useState, useEffect } from 'react';
-import { FaBars, FaPlus, FaSmile, FaArrowDown, FaSearch } from 'react-icons/fa';
 import { MdOutlineEdit } from "react-icons/md";
 import { HiOutlineUserGroup } from "react-icons/hi";
 import { MdOutlineDarkMode, MdPersonOutline, MdOutlineKeyboardArrowDown } from "react-icons/md";
@@ -7,36 +6,67 @@ import { MdOutlineDarkMode, MdPersonOutline, MdOutlineKeyboardArrowDown } from "
 import styles from './ChatScreen.module.css';
 import { useForm } from 'react-hook-form';
 import FloatingMenuModal, { FloatingMenuOption } from '@/components/FloatingMenuModal/FloatingMenuModal';
-import { ThemeProvider, useTheme } from '@/theme/themeContext';
+import { useTheme } from '@/theme/themeContext';
 import { useDispatch, useSelector } from 'react-redux';
 import { getLastSeenStatus } from '@/utils/helperFunctions';
-import { ToastContainer, toast } from 'react-toastify';
-import { ALL_USERS, USER_LOGOUT, CHAT_CONVERSATION } from '@/api/api';
+import { toast } from 'react-toastify';
+import { ALL_USERS, CHAT_CONVERSATION } from '@/api/api';
 import ImageModal from '@/components/ImageModal/ImageModal';
 import SettingsModal from '@/components/SettingsModal/SettingsModal';
+import ConfirmationModal from '@/components/ConfirmationModal/ConfirmationModal';
+import ManageUsersModal from '@/components/AddUsersModal/AddUsersModal';
 import { useSocketContext } from '@/context/SocketContext';
 import { useAuth } from '@/context/AuthContext';
 import MessageList from './MessageList';
 import ChatInput from './ChatInput';
 import ChatSidebar from './ChatSidebar';
 import { useChatSocketHandlers } from './useChatSocketHandlers';
-import { Message, User } from './ChatScreen.types';
+import { Message, User, GroupChat } from './ChatScreen.types';
 import ChatHeader from './ChatHeader';
-
+import { PinnedMessages } from '@/components/PinnedMessages/PinnedMessages';
+import GroupModal from '@/components/GroupModal/GroupModal';
 
 
 const ChatScreen: React.FC = () => {
   const dispatch = useDispatch();
   const myUserId = useSelector((state: any) => state.user.id);
   const token = useSelector((state: any) => state.user.token);
-  const [users, setUsers] = useState<User[]>([]);
+  const [users, setUsers] = useState<(User | GroupChat)[]>([]);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [messages, setMessages] = useState<Message[]>([]);
   const [unreadCounts, setUnreadCounts] = useState<{ [userId: string]: number }>({});
   const [input, setInput] = useState('');
   const [file, setFile] = useState<File | null>(null);
-  const [showSettings, setShowSettings] = useState(false);
+  const [showSettings, setShowSettings] = useState<boolean>(false);
+  const [showGroupModal, setShowGroupModal] = useState<boolean>(false);
+  const [deleteGroupConfirmation, setDeleteGroupConfirmation] = useState<{
+    open: boolean;
+    groupId: string;
+    groupName: string;
+  }>({
+    open: false,
+    groupId: '',
+    groupName: '',
+  });
+
+  const [leaveGroupConfirmation, setLeaveGroupConfirmation] = useState<{
+    open: boolean;
+    groupId: string;
+    groupName: string;
+  }>({
+    open: false,
+    groupId: '',
+    groupName: '',
+  });
+
+  const [showManageUsersModal, setShowManageUsersModal] = useState(false);
+  const [manageUsersMode, setManageUsersMode] = useState<'add' | 'remove'>('add');
+  const [selectedGroupForManageUsers, setSelectedGroupForManageUsers] = useState<{
+    groupId: string;
+    groupName: string;
+    participants: string[];
+  } | null>(null);
   const [profile, setProfile] = useState({ name: 'You', avatar: '/logo.png', description: 'Available' });
   const [showMenuModal, setShowMenuModal] = useState<boolean>(false);
   const [menuHover, setMenuHover] = useState<boolean>(false);
@@ -61,14 +91,45 @@ const ChatScreen: React.FC = () => {
   const [socketConnected, setSocketConnected] = useState<boolean>(false);
   const [editingMessage, setEditingMessage] = useState<Message | null>(null);
   const [replyToMessage, setReplyToMessage] = useState<Message | null>(null);
+  const [pinnedMessages, setPinnedMessages] = useState<Message[]>([]);
+  const [currentPinnedIndex, setCurrentPinnedIndex] = useState(0);
+  const objectUrlsRef = useRef<string[]>([]);
+  const messageListRef = useRef<HTMLDivElement>(null);
   const reconnectAttempts = useRef(0);
   const maxReconnectAttempts = 5;
   const { mode, toggleTheme } = useTheme();
   const { logout } = useAuth();
 
+  useChatSocketHandlers({
+    socket,
+    myUserId,
+    selectedUser,
+    setMessages,
+    setUsers,
+    setUnreadCounts,
+    setTypingUsers,
+    messages,
+    users,
+    setPinnedMessages,
+    onGroupDeleted: () => toast.success('Group deleted successfully'),
+    onGroupDeletionError: (error: string) => toast.error(error),
+    onUsersAddedToGroup: (data: { addedUsers: Array<{ name: string }>; addedBy: { name: string } }) => {
+      const userNames = data.addedUsers.map(user => user.name).join(', ');
+      toast.success(`${data.addedBy.name} added ${userNames} to the group`);
+      setShowManageUsersModal(false);
+      setSelectedGroupForManageUsers(null);
+    },
+    onAddUsersError: (error: string) => toast.error(error),
+    onUsersRemovedFromGroup: (data: { removedUsers: Array<{ name: string }>; removedBy: { name: string } }) => {
+      const userNames = data.removedUsers.map(user => user.name).join(', ');
+      toast.success(`${data.removedBy.name} removed ${userNames} from the group`);
+      setShowManageUsersModal(false);
+      setSelectedGroupForManageUsers(null);
+    },
+    onRemoveUsersError: (error: string) => toast.error(error),
+  });
 
 
-  const objectUrlsRef = useRef<string[]>([]);
 
   // react-hook-form for profile edit
   const {
@@ -119,9 +180,11 @@ const ChatScreen: React.FC = () => {
 
   useEffect(() => {
     if (!selectedUser) return;
-    const updated = users.find(u => u.id === selectedUser.id);
-    if (updated && (updated.isOnline !== selectedUser.isOnline || updated.online !== selectedUser.online)) {
-      setSelectedUser(updated);
+    const updated = users.find(u => u._id === selectedUser._id);
+    if (updated && !selectedUser.isGroup && !updated.isGroup) {
+      if (updated.isOnline !== selectedUser.isOnline || updated.online !== selectedUser.online) {
+        setSelectedUser(updated);
+      }
     }
   }, [users, selectedUser]);
 
@@ -130,16 +193,12 @@ const ChatScreen: React.FC = () => {
     if (!socket || !selectedUser) return;
     // Find all messages from the selected user that are not yet seen
     const unseenMessages = messages.filter(
-      msg => msg.senderId === selectedUser.id && msg.status !== 'seen'
+      msg => msg.senderId?._id === selectedUser._id && msg.status !== 'seen'
     );
     unseenMessages.forEach(msg => {
-      socket.emit('mark_as_seen', { messageId: msg.id, receiverId: selectedUser.id });
+      socket.emit('mark_as_seen', { messageId: msg._id, receiverId: selectedUser._id });
     });
-    // No return value (no cleanup needed)
   }, [socket, selectedUser, messages]);
-
-  // Remove the useEffect that listens for 'unread_count_update' in ChatScreen
-  // It is now handled in useChatSocketHandlers
 
   const handleScroll = () => {
     if (!chatBodyRef.current) return;
@@ -157,6 +216,51 @@ const ChatScreen: React.FC = () => {
     }
     return () => { if (ref) ref.removeEventListener('scroll', handleScroll); };
   }, []);
+
+  // Listen for message_pinned events from other users
+  useEffect(() => {
+    if (!socket) return;
+
+    const handleMessagePinned = (data: {
+      messageId: string;
+      isPinned: boolean;
+      message?: Message;
+    }) => {
+      console.log('Message pinned event received:', data);
+
+      // Update the message's pinned status in the messages array
+      setMessages(prevMsgs => prevMsgs.map(msg =>
+        msg._id === data.messageId ? { ...msg, isPinned: data.isPinned } : msg
+      ));
+
+      // Update pinned messages array
+      if (data.isPinned) {
+        // Add to pinned messages
+        const messageToPin = messages.find(msg => msg._id === data.messageId) || data.message;
+        if (messageToPin) {
+          setPinnedMessages(prev => {
+            // Check if already pinned to avoid duplicates
+            const isAlreadyPinned = prev.some(msg => msg._id === data.messageId);
+            if (!isAlreadyPinned) {
+              return [...prev, { ...messageToPin, isPinned: true }];
+            }
+            return prev;
+          });
+        }
+      } else {
+        // Remove from pinned messages
+        setPinnedMessages(prev => prev.filter(msg => msg._id !== data.messageId));
+      }
+
+      // Show feedback to user
+      toast.info(data.isPinned ? 'New message pinned' : 'Message unpinned');
+    };
+
+    socket.on('message_pinned', handleMessagePinned);
+    return () => {
+      socket.off('message_pinned', handleMessagePinned);
+    };
+  }, [socket, messages]);
 
   const prevMessagesLength = useRef(messages.length);
 
@@ -188,31 +292,66 @@ const ChatScreen: React.FC = () => {
       setLoading(true);
       const response = await ALL_USERS();
       if (response && response.status === 200) {
-        const fetchedUsers = response.data?.data?.map((user: any) => ({
-          ...user,
-          online: Math.random() > 0.5,
-          lastMessage: typeof user.lastMessage === 'object'
-            ? user.lastMessage?.content || ''
-            : user.lastMessage || '',
-          lastMessageSender: typeof user.lastMessage === 'object'
-            ? user.lastMessage?.senderId
-            : undefined,
-          lastMessageTimestamp: typeof user.lastMessage === 'object'
-            ? user.lastMessage?.timestamp
-            : undefined,
-        }));
+        console.log('ALL_USERS API response:', response.data?.data);
+        const fetchedUsers = response.data?.data?.map((item: any) => {
+          if (item.isGroup) {
+            // Transform group data to match our GroupChat interface
+            const group: GroupChat = {
+              _id: item.conversationId,
+              name: item.groupName,
+              avatar: item.groupAvatar || undefined,
+              participants: item.participants,
+              participantsStatus: item.participants.reduce((acc: any, participant: string) => {
+                acc[participant] = participant === (typeof item.createdBy === 'object' ? item.createdBy._id : item.createdBy) ? 'joined' : 'pending';
+                return acc;
+              }, {}),
+              createdBy: typeof item.createdBy === 'object' ? item.createdBy._id : item.createdBy,
+              isGroup: true,
+              lastMessage: item.lastMessage || null,
+              lastMessageTimestamp: item.lastMessageTimestamp,
+              unreadCount: item.unreadCount || 0
+            };
+            console.log('Transformed group from API:', group);
+            return group;
+          } else {
+            // Regular user data
+            return {
+              ...item,
+              online: Math.random() > 0.5,
+              lastMessage: item.lastMessage
+            };
+          }
+        });
         setUsers(fetchedUsers);
         if (fetchedUsers.length > 0 && !selectedUser) {
-          setSelectedUser(fetchedUsers[0]);
-          try {
-            const chatRes = await CHAT_CONVERSATION(fetchedUsers[0].id);
-            if (chatRes && chatRes.status === 200) {
-              setMessages(chatRes.data?.messages || []);
-            } else {
+          // Find the first non-group user to select initially
+          const firstUser = fetchedUsers.find((user: any) => !user.isGroup) || fetchedUsers[0];
+          setSelectedUser(firstUser);
+
+          // Only fetch conversation if it's not a group
+          if (!firstUser.isGroup) {
+            try {
+              const chatRes = await CHAT_CONVERSATION(firstUser._id);
+              if (chatRes && chatRes.status === 200) {
+                console.log(chatRes.data?.messages, "first chat messages");
+                const fetchedMessages = chatRes.data?.messages || [];
+                setMessages(fetchedMessages);
+
+                // Load pinned messages for initial conversation
+                const pinned = fetchedMessages.filter((msg: Message) => msg.isPinned);
+                setPinnedMessages(pinned);
+                console.log('Loaded initial pinned messages:', pinned);
+              } else {
+                setMessages([]);
+                setPinnedMessages([]);
+              }
+            } catch {
               setMessages([]);
             }
-          } catch {
+          } else {
+            // For groups, start with empty messages
             setMessages([]);
+            setPinnedMessages([]);
           }
         }
       }
@@ -224,132 +363,46 @@ const ChatScreen: React.FC = () => {
     }
   };
 
-  // Use only the cleaned-up useEffect for 'connect' and optionally 'connect_error':
-  // --- SOCKET LOGIC MOVED TO useChatSocketHandlers ---
-  // useEffect(() => {
-  //   if (!socket) return;
-  //   const handleConnect = () => {
-  //     console.log('✅ Connected:', socket.id);
-  //     setTimeout(() => {
-  //       socket.emit('join_room', myUserId);
-  //     }, 500);
-  //   };
-  //   const handleConnectError = (err: any) => {
-  //     console.error('❌ Connection Error:', err.message);
-  //   };
-  //   socket.on('connect', handleConnect);
-  //   socket.on('connect_error', handleConnectError);
-  //   return () => {
-  //     socket.off('connect', handleConnect);
-  //     socket.off('connect_error', handleConnectError);
-  //   };
-  // }, [socket, myUserId]);
 
-  // useEffect(() => {
-  //   if (!socket) return;
-  //   const handleReceiveMessage = (data: any) => {
-  //     // Only add message if it belongs to the currently selected chat
-  //     if (
-  //       selectedUser &&
-  //       (
-  //         (data.senderId === selectedUser.id && data.receiverId === myUserId) ||
-  //         (data.senderId === myUserId && data.receiverId === selectedUser.id)
-  //       )
-  //     ) {
-  //       setMessages(prev => {
-  //         const exists = prev.some(m => m.id === data.id);
-  //         if (exists) {
-  //           console.log('Duplicate message detected:', data.id);
-  //         }
-  //         return exists ? prev : [...prev, data];
-  //       });
-  //     } else if (data.receiverId === myUserId) {
-  //       // Message for another chat, increment unread count
-  //       setUnreadCounts(prev => ({
-  //         ...prev,
-  //         [data.senderId]: (prev[data.senderId] || 0) + 1
-  //       }));
-  //     }
-  //     // Emit message_delivered for this message
-  //     socket.emit('message_delivered', {
-  //       messageId: data.id || data.messageId,
-  //       receiverId: data.receiverId,
-  //     });
-  //   };
-  //   socket.on('receive_message', handleReceiveMessage);
-  //   return () => {
-  //     socket.off('receive_message', handleReceiveMessage);
-  //   };
-  // }, [socket, selectedUser, myUserId]);
-
-  // useEffect(() => {
-  //   if (!socket) return;
-  //   // ... online/offline status handlers ...
-  // }, [socket]);
-
-  // useEffect(() => {
-  //   if (!socket) return;
-  //   // ... delivery/seen handlers ...
-  // }, [socket]);
-
-  // useEffect(() => {
-  //   if (!socket) return;
-  //   // ... reaction handlers ...
-  // }, [socket]);
-
-  // useEffect(() => {
-  //   if (!socket || !selectedUser) return;
-  //   // ... mark as seen logic ...
-  // }, [socket, selectedUser, messages]);
-
-  // useEffect(() => {
-  //   if (!socket) return;
-  //   // ... typing handlers ...
-  // }, [socket]);
-
-  // --- END SOCKET LOGIC ---
-
-  // Use the custom socket handlers hook
-  useChatSocketHandlers({
-    socket,
-    myUserId,
-    selectedUser,
-    setMessages,
-    setUsers,
-    setUnreadCounts,
-    setTypingUsers,
-    messages,
-    users,
-  });
 
   // Restore UI handler functions (not socket event listeners)
   const handleUserSelect = async (user: User) => {
     setSelectedUser(user);
-    setUnreadCounts(prev => ({ ...prev, [user.id]: 0 }));
+    setUnreadCounts(prev => ({ ...prev, [user._id]: 0 }));
+
     try {
-      const response = await CHAT_CONVERSATION(user.id);
+      const response = await CHAT_CONVERSATION(user._id);
       if (response && response.status === 200) {
-        setMessages(response.data?.messages || []);
+        console.log('Fetched chat history for user:', response.data?.messages);
+        const fetchedMessages = response.data?.messages || [];
+        setMessages(fetchedMessages);
+
+        // Load pinned messages for this conversation
+        const pinned = fetchedMessages.filter((msg: Message) => msg.isPinned);
+        setPinnedMessages(pinned);
+        console.log('Loaded pinned messages:', pinned);
+
       } else {
         setMessages([]);
-        toast.error(response.data?.message || 'Failed to fetch chat history');
+        setPinnedMessages([]);
+        toast.error(response.data?.messages || 'Failed to fetch chat history');
       }
     } catch (error) {
       setMessages([]);
+      setPinnedMessages([]);
       toast.error('Failed to fetch chat history');
     }
+
     // Emit event to backend with selected user id
-    if (socket && user.id) {
-      socket.emit('open_chat', { selectedUserId: user.id });
-      // Also emit to reset unread count for this user
-      socket.emit('reset_unread_count', { userId: user.id });
+    if (socket && user._id) {
+      socket.emit('open_chat', { selectedUserId: user._id });
+      socket.emit('reset_unread_count', { userId: user._id });
     }
   };
-
   const menuOptions: FloatingMenuOption[] = [
     { icon: <span>@</span>, label: 'Mentions', badge: 1, onClick: () => { } },
     { icon: <MdOutlineEdit />, label: 'New Direct Message', onClick: () => { } },
-    { icon: <HiOutlineUserGroup />, label: 'New Group', onClick: () => { } },
+    { icon: <HiOutlineUserGroup />, label: 'New Group', onClick: () => setShowGroupModal(true) },
     { icon: <MdOutlineDarkMode />, label: 'Dark Mode', onClick: () => { } },
     { icon: <MdPersonOutline />, label: 'Sign Out', onClick: logout },
   ];
@@ -358,7 +411,7 @@ const ChatScreen: React.FC = () => {
     if (!socket || !selectedUser) return;
     // Optimistically update the UI for the reacting user
     setMessages(prevMsgs => prevMsgs.map(msg => {
-      if (msg.id === messageId) {
+      if (msg._id === messageId) {
         const reactions = { ...(msg.reactions || {}) };
         reactions[myUserId] = emoji;
         return { ...msg, reactions };
@@ -368,7 +421,7 @@ const ChatScreen: React.FC = () => {
     // Emit the reaction to the backend
     socket.emit('react_to_message', {
       messageId,
-      receiverId: selectedUser.id,
+      receiverId: selectedUser._id,
       reaction: emoji,
     });
   };
@@ -395,36 +448,46 @@ const ChatScreen: React.FC = () => {
   const handleInputChange = (val: string) => {
     setInput(val);
     if (!socket || !selectedUser) return;
-    socket.emit('typing', { receiverId: selectedUser.id, isTyping: true });
+    socket.emit('typing', { receiverId: selectedUser._id, isTyping: true });
     if (typingTimeout.current) clearTimeout(typingTimeout.current);
     typingTimeout.current = setTimeout(() => {
-      socket.emit('stop_typing', { receiverId: selectedUser.id });
+      socket.emit('stop_typing', { receiverId: selectedUser._id });
     }, 1200);
   };
-
+  console.log("hitted==============>")
   const handleSend = () => {
-    if (!socket) {
-      toast.error('Socket not connected');
-      return;
+    if (!socket || !selectedUser || !input.trim()) return;
+
+    // Check if this is a group and if user has joined
+    if (selectedUser.isGroup) {
+      const userStatus = selectedUser.participantsStatus?.[myUserId];
+      const isCreator = selectedUser.createdBy === myUserId;
+      if (userStatus !== 'joined' && !isCreator) {
+        toast.error('You must join the group to send messages');
+        return;
+      }
     }
-    if (!selectedUser || !input.trim()) return;
-    if (editingMessage) {
-      socket.emit('edit_message', {
-        _id: editingMessage._id,
-        newContent: input,
-        editorId: myUserId,
-      });
-      setEditingMessage(null);
-      setInput('');
-      setReplyToMessage(null);
-      return;
-    }
-    socket.emit('send_message', {
+
+    const messageData = {
       senderId: myUserId,
-      receiverId: selectedUser.id,
       content: input,
-      replyToMessageId: replyToMessage ? (replyToMessage._id || replyToMessage.id) : null
-    });
+      replyToMessageId: replyToMessage?.id || null
+    };
+
+    if (selectedUser.isGroup) {
+      // Group message
+      socket.emit('send_group_message', {
+        ...messageData,
+        groupId: selectedUser._id
+      });
+    } else {
+      // Direct message
+      socket.emit('send_message', {
+        ...messageData,
+        receiverId: selectedUser._id
+      });
+    }
+
     setInput('');
     setReplyToMessage(null);
   };
@@ -435,17 +498,15 @@ const ChatScreen: React.FC = () => {
   };
 
   const handleReply = (messageId: string) => {
-    const message = messages.find(m => m.id === messageId);
+    const message = messages.find(m => m._id === messageId);
     if (message) {
       setInput('');
       setReplyToMessage(message);
     }
   };
 
-
-
   const handleThreadReply = (messageId: string) => {
-    const message = messages.find(m => m.id === messageId);
+    const message = messages.find(m => m._id === messageId);
     if (message) {
       setInput(`Thread reply to: ${message.content} `);
       toast.info('Thread reply mode activated');
@@ -460,24 +521,62 @@ const ChatScreen: React.FC = () => {
     }
   };
 
-  const handlePinMessage = (messageId: string) => {
-    const message = messages.find(m => m.id === messageId);
-    if (message) {
-      toast.success(`"${message.content}" pinned to conversation`);
+  const handlePinMessage = (message: Message) => {
+    if (!socket || !selectedUser) return;
+
+    const isCurrentlyPinned = message.isPinned;
+
+    // Optimistically update the UI immediately
+    setMessages(prev => prev.map(msg =>
+      msg._id === message._id ? { ...msg, isPinned: !isCurrentlyPinned } : msg
+    ));
+
+    setPinnedMessages(prev => {
+      if (isCurrentlyPinned) {
+        return prev.filter(m => m._id !== message._id);
+      } else {
+        return [...prev, { ...message, isPinned: true }];
+      }
+    });
+
+    // Send the socket event
+    socket.emit(isCurrentlyPinned ? 'unpin_message' : 'pin_message', {
+      messageId: message._id,
+      conversationId: message.conversationId || selectedUser._id,
+      userId: myUserId
+    });
+  };
+
+  const scrollToMessage = (messageId: string) => {
+    console.log(messageId, "scrolling to message");
+    const messageElement = document.getElementById(`message-${messageId}`);
+    if (messageElement) {
+      messageElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      // Add a flash effect to highlight the message
+      messageElement.classList.add(styles.highlighted);
+      setTimeout(() => {
+        messageElement.classList.remove(styles.highlighted);
+      }, 2000);
+    } else {
+      console.log('Message element not found:', messageId);
     }
   };
 
+  const handlePinnedMessageClick = (messageId: string) => {
+    scrollToMessage(messageId);
+  };
+
   const handleDeleteMessage = (messageId: string) => {
-    const message = messages.find(m => m.id === messageId);
+    const message = messages.find(m => m._id === messageId);
     // Optimistically remove the message from UI
-    setMessages(prev => prev.filter(msg => msg.id !== messageId));
+    setMessages(prev => prev.filter(msg => msg._id !== messageId));
 
     // Emit delete_message with required parameters
     if (socket && message && selectedUser) {
       const deleteData = {
         messageId: messageId,
-        senderId: message.senderId,
-        receiverId: selectedUser.id
+        senderId: message.senderId?._id,
+        receiverId: selectedUser._id
       };
       socket.emit('delete_message', deleteData);
     } else {
@@ -514,7 +613,172 @@ const ChatScreen: React.FC = () => {
     setInput('');
   };
 
-  console.log(unreadCounts, "unreadCounts-------------->");
+  const handleCreateGroup = (name: string, selectedUsers: User[]) => {
+    if (!socket) {
+      toast.error('Socket connection not available');
+      return;
+    }
+
+    const participants = [myUserId, ...selectedUsers.map(user => user._id)];
+
+    socket.emit('create_group', {
+      groupName: name || 'New Group',
+      groupAvatar: '',
+      participants,
+      createdBy: myUserId
+    }, (response: any) => {
+      console.log('Group creation callback response:', response);
+      if (response.success) {
+        toast.success(`Group created successfully`);
+        setShowGroupModal(false);
+      } else {
+        toast.error(response.error || 'Failed to create group');
+      }
+    });
+  };
+
+  const handleJoinGroup = (groupId: string) => {
+    if (!socket) {
+      toast.error('Socket connection not available');
+      return;
+    }
+
+    socket.emit('join_group', { groupId }, (response: { success: boolean; error?: string }) => {
+      if (response.success) {
+        toast.success('Successfully joined the group');
+        // The user_joined_group event will update the participantsStatus
+      } else {
+        toast.error(response.error || 'Failed to join group');
+      }
+    });
+  };
+
+  const handleLeaveGroup = (groupId: string) => {
+    if (!socket) {
+      toast.error('Socket connection not available');
+      return;
+    }
+
+    const group = users.find(u => u._id === groupId);
+    setLeaveGroupConfirmation({
+      open: true,
+      groupId: groupId,
+      groupName: group?.name || 'this group',
+    });
+  };
+
+  const handleConfirmLeaveGroup = () => {
+    if (!socket) {
+      toast.error('Socket connection not available');
+      return;
+    }
+
+    socket.emit('leave_group', { groupId: leaveGroupConfirmation.groupId });
+    setLeaveGroupConfirmation({ open: false, groupId: '', groupName: '' });
+  };
+
+  const handleCancelLeaveGroup = () => {
+    setLeaveGroupConfirmation({ open: false, groupId: '', groupName: '' });
+  };
+
+  const handleAddUsers = (groupId: string) => {
+    const group = users.find(u => u._id === groupId);
+    if (group && group.isGroup) {
+      setSelectedGroupForManageUsers({
+        groupId: groupId,
+        groupName: group.name,
+        participants: group.participants || []
+      });
+      setManageUsersMode('add');
+      setShowManageUsersModal(true);
+    }
+  };
+
+  const handleRemoveUsers = (groupId: string) => {
+    const group = users.find(u => u._id === groupId);
+    if (group && group.isGroup) {
+      setSelectedGroupForManageUsers({
+        groupId: groupId,
+        groupName: group.name,
+        participants: group.participants || []
+      });
+      setManageUsersMode('remove');
+      setShowManageUsersModal(true);
+    }
+  };
+
+  const handleConfirmAddUsers = (groupId: string, selectedUserIds: string[]) => {
+    if (!socket) {
+      toast.error('Socket connection not available');
+      return;
+    }
+
+    // Get the names of selected users for better system message
+    const selectedUserNames = selectedUserIds.map(userId => {
+      const user = users.find(u => u._id === userId);
+      return user?.name || 'Unknown User';
+    });
+
+    socket.emit('add_users_to_group', {
+      conversationId: groupId,
+      participants: selectedUserIds,
+      requestedBy: myUserId,
+      // Store selected user names for system message (if backend supports it)
+      selectedUserNames: selectedUserNames
+    });
+  };
+
+  const handleCloseManageUsersModal = () => {
+    setShowManageUsersModal(false);
+    setSelectedGroupForManageUsers(null);
+  };
+
+  const handleConfirmRemoveUsers = (groupId: string, selectedUserIds: string[]) => {
+    if (!socket) {
+      toast.error('Socket connection not available');
+      return;
+    }
+
+    socket.emit('user_removed_from_group', {
+      conversationId: groupId,
+      participants: selectedUserIds,
+      requestedBy: myUserId
+    });
+  };
+
+  const handleDeleteGroup = (groupId: string) => {
+    if (!socket) {
+      toast.error('Socket connection not available');
+      return;
+    }
+
+    const group = users.find(u => u._id === groupId);
+    setDeleteGroupConfirmation({
+      open: true,
+      groupId: groupId,
+      groupName: group?.name || 'this group',
+    });
+  };
+
+  const handleConfirmDeleteGroup = () => {
+    if (!socket) {
+      toast.error('Socket connection not available');
+      return;
+    }
+
+    socket.emit('delete_group', {
+      conversationId: deleteGroupConfirmation.groupId,
+      requestedBy: myUserId
+    });
+
+    setDeleteGroupConfirmation({ open: false, groupId: '', groupName: '' });
+  };
+
+  const handleCancelDeleteGroup = () => {
+    setDeleteGroupConfirmation({ open: false, groupId: '', groupName: '' });
+  };
+
+  console.log(myUserId, "users-------------->");
 
   return (
     <div className={styles.chatContainer}>
@@ -551,11 +815,21 @@ const ChatScreen: React.FC = () => {
       <main className={styles.chatMain}>
         <ChatHeader
           selectedUser={selectedUser}
-          unreadCount={selectedUser ? unreadCounts[selectedUser.id] || 0 : 0}
+          unreadCount={selectedUser ? unreadCounts[selectedUser.id || selectedUser._id] || 0 : 0}
           getLastSeenStatus={getLastSeenStatus}
           onSettings={() => setShowSettings(true)}
-        // onMenu={...} // Add if you want to handle menu
+          myUserId={myUserId}
+          onLeaveGroup={handleLeaveGroup}
+          onDeleteGroup={handleDeleteGroup}
+          onAddUsers={handleAddUsers}
+          onRemoveUsers={handleRemoveUsers}
         />
+        {pinnedMessages.length > 0 && (
+          <PinnedMessages
+            pinnedMessages={pinnedMessages}
+            onPinnedMessageClick={handlePinnedMessageClick}
+          />
+        )}
         <div
           ref={chatBodyRef}
           className={styles.chatBody}
@@ -565,6 +839,8 @@ const ChatScreen: React.FC = () => {
             messages={messages}
             myUserId={myUserId}
             selectedUser={selectedUser}
+            pinnedMessages={pinnedMessages}
+            onPin={handlePinMessage}
             onReact={handleReactToMessage}
             onRemoveReaction={handleRemoveReaction}
             emojiBarOpenId={emojiBarOpenId}
@@ -582,6 +858,8 @@ const ChatScreen: React.FC = () => {
             onReply={handleReply}
             onThreadReply={handleThreadReply}
             onEdit={handleEditMessage}
+            onJoinGroup={handleJoinGroup}
+            users={users}
           />
         </div>
         <ChatInput
@@ -595,6 +873,19 @@ const ChatScreen: React.FC = () => {
           handleEmojiSelect={handleEmojiSelect}
           replyToMessage={replyToMessage}
           setReplyToMessage={setReplyToMessage}
+          disabled={(() => {
+            const isDisabled = selectedUser?.isGroup && selectedUser.participantsStatus?.[myUserId] !== 'joined' && selectedUser.createdBy !== myUserId;
+            console.log('ChatInput disabled check:', {
+              isGroup: selectedUser?.isGroup,
+              myUserId,
+              myStatus: selectedUser?.participantsStatus?.[myUserId],
+              createdBy: selectedUser?.createdBy,
+              isCreator: selectedUser?.createdBy === myUserId,
+              isDisabled
+            });
+            return isDisabled;
+          })()}
+          disabledMessage={selectedUser?.isGroup ? "You must join the group to send messages" : "You cannot send messages"}
         />
         {/* Scroll to bottom button */}
         {showScrollToBottom && (
@@ -643,6 +934,50 @@ const ChatScreen: React.FC = () => {
         onAvatarChange={handleAvatarChange}
         onLogout={handleLogout}
       />
+      <GroupModal
+        open={showGroupModal}
+        onClose={() => setShowGroupModal(false)}
+        myUserId={myUserId}
+        onCreateGroup={handleCreateGroup}
+      />
+
+      {/* Group Delete Confirmation Modal */}
+      <ConfirmationModal
+        open={deleteGroupConfirmation.open}
+        title="Delete Group"
+        message={`Are you sure you want to permanently delete "${deleteGroupConfirmation.groupName}"? This action cannot be undone and all messages will be lost.`}
+        confirmText="DELETE"
+        cancelText="Cancel"
+        onConfirm={handleConfirmDeleteGroup}
+        onCancel={handleCancelDeleteGroup}
+      />
+
+      {/* Group Leave Confirmation Modal */}
+      <ConfirmationModal
+        open={leaveGroupConfirmation.open}
+        title="Leave Group"
+        message={`Are you sure you want to leave "${leaveGroupConfirmation.groupName}"? Once you leave the group, you cannot be added back until an admin adds you to the group.`}
+        confirmText="LEAVE"
+        cancelText="Cancel"
+        onConfirm={handleConfirmLeaveGroup}
+        onCancel={handleCancelLeaveGroup}
+      />
+
+      {/* Manage Users Modal */}
+      {selectedGroupForManageUsers && (
+        <ManageUsersModal
+          open={showManageUsersModal}
+          onClose={handleCloseManageUsersModal}
+          allUsers={users.filter(user => !user.isGroup) as User[]}
+          groupId={selectedGroupForManageUsers.groupId}
+          groupName={selectedGroupForManageUsers.groupName}
+          currentParticipants={selectedGroupForManageUsers.participants}
+          onAddUsers={handleConfirmAddUsers}
+          onRemoveUsers={handleConfirmRemoveUsers}
+          mode={manageUsersMode}
+          myUserId={myUserId}
+        />
+      )}
     </div>
   );
 };

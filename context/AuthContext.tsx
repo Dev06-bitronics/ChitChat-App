@@ -1,11 +1,10 @@
 import React, { createContext, useState, useContext, useCallback } from 'react';
-import { USER_LOGIN, USER_REGISTER, USER_LOGOUT } from '@/api/api';
+import { USER_LOGIN, USER_REGISTER } from '@/api/api';
 import { useDispatch } from 'react-redux';
 import { setUser, clearToken } from '@/redux/reducers/userReducer';
 import { toast } from 'react-toastify';
 import { jwtDecode } from 'jwt-decode';
-import { validateToken } from '@/utils/helperFunctions';
-import { store } from '@/redux/store/store';
+
 
 interface AuthContextProps {
   loading: boolean;
@@ -24,14 +23,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   //   try {
   //     const token = store.getState().user.token;
   //     if (!token) return false;
-      
+
   //     const validation = validateToken(token);
   //     if (!validation.isValid || validation.isExpired) {
   //       // Clear invalid token
   //       dispatch(clearToken());
   //       return false;
   //     }
-      
+
   //     return true;
   //   } catch (error) {
   //     console.error('Token validation error:', error);
@@ -45,12 +44,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       const response = await USER_LOGIN({ mobileNumber, password });
       if (response && response.status === 200) {
+        console.log(response.data.data, "response.data.data------------------->");
         const token = response.data?.data?.access_token;
         const name = response.data?.data?.name || response.data?.data?.user?.name || 'User';
-        let userId = response.data?.data?.user?.id || response.data?.data?.user?._id;
+        let userId = response.data?.data?.user?._id;
         if (!userId && token) {
           try {
             const decoded: any = jwtDecode(token);
+            console.log(decoded, "decoded------------------->");
             userId = decoded.id || decoded.user_id || decoded.sub || decoded._id;
           } catch (e) {
             console.error('Failed to decode JWT', e);
@@ -67,6 +68,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     } catch (error: any) {
       toast.error(error?.response?.data?.message || error?.message || 'Login failed');
+      console.log(error, "error------------------->");
     } finally {
       setLoading(false);
     }
@@ -79,7 +81,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (response && response.status === 201) {
         const token = response.data?.data?.token;
         const userName = response.data?.data?.name || response.data?.data?.user?.name || name;
-        let userId = response.data?.data?.user?.id || response.data?.data?.user?._id;
+        let userId = response.data?.data?.user?._id;
         if (!userId && token) {
           try {
             const decoded: any = jwtDecode(token);

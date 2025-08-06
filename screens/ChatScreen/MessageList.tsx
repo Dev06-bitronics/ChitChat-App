@@ -12,7 +12,7 @@ import ConfirmationModal from '@/components/ConfirmationModal/ConfirmationModal'
 import { formatTo12Hour, generateInitials, isSameMinute } from '@/utils/helperFunctions';
 
 interface MessageListProps {
-   messages: Message[];
+  messages: Message[];
   myUserId: string;
   selectedUser: User | null;
   onReact: (messageId: string, emoji: string) => void;
@@ -32,6 +32,10 @@ interface MessageListProps {
   onReply?: (messageId: string) => void;
   onThreadReply?: (messageId: string) => void;
   onEdit?: (messageId: string) => void;
+  pinnedMessages: Message[]; // Add this
+  onPin: (message: Message) => void;
+  onJoinGroup?: (groupId: string) => void;
+  users?: User[]; // Add users to find creator info
 }
 
 const emojiOptions = ['👍', '😂', '❤️', '😮', '😢', '🎉'];
@@ -57,6 +61,10 @@ const MessageList: React.FC<MessageListProps> = ({
   onReply,
   onThreadReply,
   onEdit,
+  pinnedMessages,
+  onPin,
+  onJoinGroup,
+  users = [],
 }) => {
   const [contextMenu, setContextMenu] = useState<{
     open: boolean;
@@ -79,7 +87,6 @@ const MessageList: React.FC<MessageListProps> = ({
     messageId: '',
     messageContent: '',
   });
-
   // Close emoji bar on outside click
   useEffect(() => {
     if (!emojiBarOpenId) return;
@@ -112,13 +119,13 @@ const MessageList: React.FC<MessageListProps> = ({
     console.log('handleMessageMenuClick called with:', { messageId, isMine });
     e.preventDefault();
     e.stopPropagation();
-    
+
     const rect = e.currentTarget.getBoundingClientRect();
     const menuWidth = 200; // Approximate width of the context menu
     const padding = 10;
-    
+
     let x: number;
-    
+
     if (isMine) {
       // For my messages, position menu to the right of the button (will be transformed left by the menu)
       x = rect.right + padding;
@@ -126,7 +133,7 @@ const MessageList: React.FC<MessageListProps> = ({
       // For other messages, position menu to the right of the button
       x = rect.right + padding;
     }
-    
+
     // Ensure menu doesn't go off-screen
     const viewportWidth = window.innerWidth;
     if (x + menuWidth > viewportWidth) {
@@ -135,9 +142,9 @@ const MessageList: React.FC<MessageListProps> = ({
     if (x < padding) {
       x = padding;
     }
-    
+
     const y = rect.top;
-    
+
     console.log('Setting context menu with:', { open: true, x, y, messageId });
     setContextMenu({
       open: true,
@@ -148,32 +155,110 @@ const MessageList: React.FC<MessageListProps> = ({
   };
 
   const handleContextMenuAction = (action: string) => {
-    console.log(`${action} for message: ${contextMenu.messageId}`);
-    console.log('onDelete function available:', !!onDelete);
-    
-    if (action === 'delete') {
-      const message = messages.find(m => m.id === contextMenu.messageId);
-      setDeleteConfirmation({
-        open: true,
-        messageId: contextMenu.messageId,
-        messageContent: message?.content || 'this message',
-      });
-    } else if (action === 'reply' && onReply) {
-      onReply(contextMenu.messageId);
-    } else if (action === 'threadReply' && onThreadReply) {
-      onThreadReply(contextMenu.messageId);
-    } else if (action === 'edit' && onEdit) {
-      onEdit(contextMenu.messageId);
+  console.log(`${action} for message: ${contextMenu.messageId}`);
+
+  if (action === 'delete') {
+    const message = messages.find(m => m._id === contextMenu.messageId);
+    setDeleteConfirmation({
+      open: true,
+      messageId: contextMenu.messageId,
+      messageContent: message?.content || 'this message',
+    });
+  } else if (action === 'reply' && onReply) {
+    onReply(contextMenu.messageId);
+  } else if (action === 'threadReply' && onThreadReply) {
+    onThreadReply(contextMenu.messageId);
+  } else if (action === 'edit' && onEdit) {
+    onEdit(contextMenu.messageId);
+  } else if (action === 'pin') {
+    const message = messages.find(m => m._id === contextMenu.messageId);
+    if (message && onPin) {
+      // Pass the original message without toggling - let parent handle it
+      onPin(message);
     }
-    
-    setContextMenu(prev => ({ ...prev, open: false }));
-  };
+  }
+
+  setContextMenu(prev => ({ ...prev, open: false }));
+};
+
+const isMessagePinned = (messageId: string): boolean => {
+  const message = messages.find(m => m._id === messageId);
+  return message?.isPinned ?? false;
+};
+
+const isPendingGroup = selectedUser?.isGroup &&
+    selectedUser.participantsStatus?.[myUserId] === 'pending';
+
+console.log('Group status check:', {
+  isGroup: selectedUser?.isGroup,
+  myUserId,
+  participantsStatus: selectedUser?.participantsStatus,
+  myStatus: selectedUser?.participantsStatus?.[myUserId],
+  isPendingGroup,
+  createdBy: selectedUser?.createdBy
+});
+
+  if (isPendingGroup) {
+    const creator = users.find(u => u._id === selectedUser.createdBy);
+    return (
+      <div className={styles.groupJoinContainer}>
+        <div className={styles.groupJoinInfo}>
+          <h3>{selectedUser.name}</h3>
+          <p>Created by: {creator?.name || 'Unknown user'}</p>
+          <p>{selectedUser.participants?.length || 0} members</p>
+          <button
+            className={styles.joinGroupButton}
+            onClick={() => onJoinGroup?.(selectedUser._id)}
+          >
+            Join Group
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   if (!messages.length) {
     return <NoDataFound message="No chats here yet..." />;
   }
 
   console.log('Rendering MessageContextMenu with:', contextMenu);
+
+  // Filter pinned messages for current conversation only
+  const seenMessageIds = new Set<string>();
+  const currentConversationPinnedMessages = selectedUser ? messages.filter(msg => {
+    // Skip if message is not pinned
+    if (!msg.isPinned) {
+      return false;
+    }
+
+    // Check if message belongs to current conversation
+    const isCurrentConversation =
+      (msg.senderId?._id === myUserId && msg.receiverId?._id === selectedUser._id) ||
+      (msg.senderId?._id === selectedUser._id && msg.receiverId?._id === myUserId);
+
+    // Skip if not in current conversation
+    if (!isCurrentConversation) {
+      return false;
+    }
+
+    // Check for duplicates using both id and _id
+    const messageId = msg._id || msg._id;
+    if (seenMessageIds.has(messageId)) {
+      return false;
+    }
+    
+    // Add to seen messages
+    seenMessageIds.add(messageId);
+
+    console.log('Processing pinned message:', {
+      messageId,
+      senderId: msg.senderId?._id,
+      receiverId: msg.receiverId?._id,
+      isPinned: msg.isPinned
+    });
+
+    return true;
+  }) : [];
 
   const handleConfirmDelete = () => {
     if (onDelete) {
@@ -187,18 +272,30 @@ const MessageList: React.FC<MessageListProps> = ({
     setDeleteConfirmation({ open: false, messageId: '', messageContent: '' });
   };
 
+  console.log(selectedUser?._id, "selectedUser?._id------------------->");
+
   return (
     <div>
       {messages && messages.map((msg, index) => {
-        const isMine = msg?.senderId === myUserId;
+        // Check if message belongs to current conversation
+        console.log(msg?.senderId?._id, myUserId, "msg.status------------------->");
+        const isCurrentConversation =
+          (msg.senderId?._id === myUserId && msg.receiverId?._id === selectedUser?._id) ||
+          (msg.senderId?._id === selectedUser?._id && msg.receiverId?._id === myUserId);
+
+        if (!isCurrentConversation) {
+          return null;
+        }
+
+        const isMine = msg?.senderId?._id === myUserId;
         const allLines = (msg?.content || '').split('\n').map(line => line.trim());
         const supportedLinks = allLines.filter(line => /https?:\/\//.test(line));
         const mediaLink = supportedLinks[0];
         const textBelow = allLines.filter(line => !supportedLinks.includes(line) && line !== '').join(' ').replace(/\s+/g, ' ').trim();
         const prevMsg = messages[index - 1];
         const nextMsg = messages[index + 1];
-        const isFirstInGroup = !prevMsg || prevMsg.senderId !== msg.senderId;
-        const isLastInGroup = !nextMsg || nextMsg.senderId !== msg.senderId || !isSameMinute(nextMsg, msg);
+        const isFirstInGroup = !prevMsg || prevMsg.senderId?._id !== msg.senderId?._id;
+        const isLastInGroup = !nextMsg || nextMsg.senderId?._id !== msg.senderId?._id || !isSameMinute(nextMsg, msg);
 
         // Render all unique emojis from reactions object or array
         let allReactions: string[] = [];
@@ -219,7 +316,7 @@ const MessageList: React.FC<MessageListProps> = ({
           if (typeof msg.replyToMessageId === 'object' && 'content' in msg.replyToMessageId) {
             repliedMessage = msg.replyToMessageId;
           } else if (typeof msg.replyToMessageId === 'string') {
-            repliedMessage = messages.find(m => m.id === msg.replyToMessageId || m._id === msg.replyToMessageId);
+            repliedMessage = messages.find(m => m._id === msg.replyToMessageId || m._id === msg.replyToMessageId);
           }
         }
 
@@ -228,20 +325,23 @@ const MessageList: React.FC<MessageListProps> = ({
           marginBottom: isLastInGroup ? 8 : 1,
           position: 'relative',
           display: 'flex',
-          flexDirection: 'column',
+          flexDirection: 'column' as const,
         };
+
+        // Check if message is pinned
+        const isPinned = isMessagePinned(msg._id || msg._id);
 
         if (isMine) {
           return (
             <div
-              key={msg.id}
+              key={msg._id}
               className={styles.chatMsgRowMine}
               style={{
                 alignItems: 'flex-end',
                 ...bubbleStyle,
               }}
             >
-              
+
               {/* My message content (no avatar) */}
               {/* Reactions bar above the message bubble */}
               {uniqueReactions.length > 0 && (
@@ -255,19 +355,19 @@ const MessageList: React.FC<MessageListProps> = ({
               <div style={{ position: 'relative', width: 'fit-content', maxWidth: 340 }}>
                 {/* Three dots menu button - positioned to the left for my messages */}
                 <button
-                  className={`${styles.messageMenuBtn} ${contextMenu.open && contextMenu.messageId === msg.id ? styles.active : ''}`}
+                  className={`${styles.messageMenuBtn} ${contextMenu.open && contextMenu.messageId === msg._id ? styles.active : ''}`}
                   style={{
                     left: '-40px',
                     top: '50%',
                     transform: 'translateY(-50%)',
                   }}
-                  onClick={(e) => handleMessageMenuClick(e, msg.id, true)}
+                  onClick={(e) => handleMessageMenuClick(e, msg._id, true)}
                   title="Message options"
                 >
                   <BsThreeDotsVertical size={16} />
                 </button>
 
-                {emojiBarOpenId === msg.id && (
+                {emojiBarOpenId === msg._id && (
                   <div
                     id="emoji-selector-bar"
                     className={styles.emojiSelectorBar}
@@ -300,9 +400,9 @@ const MessageList: React.FC<MessageListProps> = ({
                             e.preventDefault();
                             e.stopPropagation();
                             if (hasReacted) {
-                              onRemoveReaction(msg?.id);
+                              onRemoveReaction(msg?._id);
                             } else {
-                              onReact(msg?.id, emoji);
+                              onReact(msg?._id, emoji);
                             }
                             setEmojiBarOpenId(null);
                           }}
@@ -323,7 +423,8 @@ const MessageList: React.FC<MessageListProps> = ({
                   </div>
                 )}
                 <div
-                  className={styles.myMsg}
+                  className={`${styles.myMsg} ${isPinned ? styles.pinned : ''}`}
+                  id={`message-${msg._id || msg._id}`} // Add support for both id formats
                   style={{
                     maxWidth: 340,
                     wordBreak: 'break-word',
@@ -332,16 +433,19 @@ const MessageList: React.FC<MessageListProps> = ({
                   }}
                   onClick={e => {
                     e.stopPropagation();
-                    console.log('open emoji bar', msg.id);
-                    setEmojiBarOpenId(msg.id);
+                    console.log('open emoji bar', msg._id);
+                    setEmojiBarOpenId(msg._id);
                   }}
                 >
+                  {/* {isPinned && (
+                    <div className={styles.pinnedIndicator}>📌</div>
+                  )} */}
                   <div className={styles.chatMsgContent}>
                     {mediaLink && (
                       <MediaEmbed
                         content={mediaLink}
-                        openYouTube={openYouTubePlayers[msg?.id]}
-                        setOpenYouTube={open => setOpenYouTubePlayers(prev => ({ ...prev, [msg?.id]: open }))}
+                        openYouTube={openYouTubePlayers[msg?._id]}
+                        setOpenYouTube={open => setOpenYouTubePlayers(prev => ({ ...prev, [msg?._id]: open }))}
                       />
                     )}
                     {textBelow && (
@@ -398,11 +502,11 @@ const MessageList: React.FC<MessageListProps> = ({
                     style={{ justifyContent: isMine ? 'flex-end' : 'flex-start', display: 'flex', alignItems: 'center', gap: 1, marginTop: 5, marginRight: isMine ? 1 : 0, marginLeft: isMine ? 0 : 1, fontSize: '0.75rem', color: 'var(--color-textSecondary)', minHeight: 20, maxWidth: 340 }}
                   >
                     {isMine && (
-                      msg.status === 'sent' ? (
+                      msg?.status === 'sent' ? (
                         <BsCheck style={{ color: '#888', fontSize: 16, marginRight: 4 }} />
-                      ) : msg.status === 'delivered' ? (
+                      ) : msg?.status === 'delivered' ? (
                         <RiCheckDoubleLine style={{ color: '#888', fontSize: 16, marginRight: 4 }} />
-                      ) : msg.status === 'seen' ? (
+                      ) : msg?.status === 'seen' ? (
                         <RiCheckDoubleLine style={{ color: '#1976d2', fontSize: 16, marginRight: 4 }} />
                       ) : null
                     )}
@@ -415,7 +519,7 @@ const MessageList: React.FC<MessageListProps> = ({
         } else {
           return (
             <div
-              key={msg.id}
+              key={msg._id}
               className={styles.chatMsgRowOther}
               style={{
                 display: 'flex',
@@ -470,19 +574,19 @@ const MessageList: React.FC<MessageListProps> = ({
                 <div style={{ position: 'relative', width: 'fit-content', maxWidth: 340 }}>
                   {/* Three dots menu button - positioned to the right for other messages */}
                   <button
-                    className={`${styles.messageMenuBtn} ${contextMenu.open && contextMenu.messageId === msg.id ? styles.active : ''}`}
+                    className={`${styles.messageMenuBtn} ${contextMenu.open && contextMenu.messageId === msg._id ? styles.active : ''}`}
                     style={{
                       right: '-40px',
                       top: '50%',
                       transform: 'translateY(-50%)',
                     }}
-                    onClick={(e) => handleMessageMenuClick(e, msg.id, false)}
+                    onClick={(e) => handleMessageMenuClick(e, msg._id, false)}
                     title="Message options"
                   >
                     <BsThreeDotsVertical size={16} />
                   </button>
 
-                  {emojiBarOpenId === msg.id && (
+                  {emojiBarOpenId === msg._id && (
                     <div
                       id="emoji-selector-bar"
                       className={styles.emojiSelectorBar}
@@ -515,9 +619,9 @@ const MessageList: React.FC<MessageListProps> = ({
                               e.preventDefault();
                               e.stopPropagation();
                               if (hasReacted) {
-                                onRemoveReaction(msg?.id);
+                                onRemoveReaction(msg?._id);
                               } else {
-                                onReact(msg?.id, emoji);
+                                onReact(msg?._id, emoji);
                               }
                               setEmojiBarOpenId(null);
                             }}
@@ -538,7 +642,8 @@ const MessageList: React.FC<MessageListProps> = ({
                     </div>
                   )}
                   <div
-                    className={styles.otherMsg}
+                    className={`${styles.otherMsg} ${isPinned ? styles.pinned : ''}`}
+                    id={`message-${msg._id || msg._id}`} 
                     style={{
                       maxWidth: 340,
                       wordBreak: 'break-word',
@@ -547,15 +652,18 @@ const MessageList: React.FC<MessageListProps> = ({
                     }}
                     onClick={e => {
                       e.stopPropagation();
-                      setEmojiBarOpenId(msg.id);
+                      setEmojiBarOpenId(msg._id);
                     }}
                   >
+                    {/* {isPinned && (
+                      <div className={styles.pinnedIndicator}>📌</div>
+                    )} */}
                     <div className={styles.chatMsgContent}>
                       {mediaLink && (
                         <MediaEmbed
                           content={mediaLink}
-                          openYouTube={openYouTubePlayers[msg?.id]}
-                          setOpenYouTube={open => setOpenYouTubePlayers(prev => ({ ...prev, [msg?.id]: open }))}
+                          openYouTube={openYouTubePlayers[msg?._id]}
+                          setOpenYouTube={open => setOpenYouTubePlayers(prev => ({ ...prev, [msg?._id]: open }))}
                         />
                       )}
                       {textBelow && (
@@ -612,11 +720,11 @@ const MessageList: React.FC<MessageListProps> = ({
                       style={{ justifyContent: isMine ? 'flex-end' : 'flex-start', display: 'flex', alignItems: 'center', gap: 1, marginTop: 5, marginRight: isMine ? 1 : 0, marginLeft: isMine ? 0 : 1, fontSize: '0.75rem', color: 'var(--color-textSecondary)', minHeight: 20, maxWidth: 340 }}
                     >
                       {isMine && (
-                        msg.status === 'sent' ? (
+                        msg?.status === 'sent' ? (
                           <BsCheck style={{ color: '#888', fontSize: 16, marginRight: 4 }} />
-                        ) : msg.status === 'delivered' ? (
+                        ) : msg?.status === 'delivered' ? (
                           <RiCheckDoubleLine style={{ color: '#888', fontSize: 16, marginRight: 4 }} />
-                        ) : msg.status === 'seen' ? (
+                        ) : msg?.status === 'seen' ? (
                           <RiCheckDoubleLine style={{ color: '#1976d2', fontSize: 16, marginRight: 4 }} />
                         ) : null
                       )}
@@ -630,7 +738,7 @@ const MessageList: React.FC<MessageListProps> = ({
         }
       })}
       <div ref={chatEndRef} />
-      {selectedUser && typingUsers[selectedUser.id] && (
+      {selectedUser && typingUsers[selectedUser._id] && (
         <div className={styles.typingIndicator}>{selectedUser.name} is typing...</div>
       )}
 
@@ -639,7 +747,10 @@ const MessageList: React.FC<MessageListProps> = ({
         open={contextMenu.open}
         x={contextMenu.x}
         y={contextMenu.y}
-        isOwnMessage={messages.find(m => m.id === contextMenu.messageId)?.senderId === myUserId}
+        isOwnMessage={messages.find(m => m._id === contextMenu.messageId)?.senderId?._id === myUserId}
+        isPinned={!!messages.find(m =>
+          (m._id === contextMenu.messageId || m._id === contextMenu.messageId) && m.isPinned === true
+        )}
         onClose={() => setContextMenu(prev => ({ ...prev, open: false }))}
         onReply={() => handleContextMenuAction('reply')}
         onThreadReply={() => handleContextMenuAction('threadReply')}

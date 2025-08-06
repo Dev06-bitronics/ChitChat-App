@@ -1,4 +1,3 @@
-// Only needed for Node.js/server-side usage, not for browser/Next.js
 import axios from 'axios';
 import axiosRetry from 'axios-retry';
 import { store } from '@/redux/store/store';
@@ -95,7 +94,7 @@ apiClient.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
-// Request interceptor: check network connection (web version)
+// Request interceptor: check network connection
 apiClient.interceptors.request.use(
   async config => {
     if (typeof window !== 'undefined' && !navigator.onLine) {
@@ -123,44 +122,38 @@ apiClient.interceptors.response.use(
     if (error.response) {
       switch (error.response.status) {
         case 401:
-          // Handle unauthorized access - clear token and redirect to login
-          errorMessage = 'Session expired. Please login again.';
+          errorMessage = error.response.data?.message || 'Unauthorized access';
           errorStatus = 'UNAUTHORIZED';
-
-          // Clear the token from Redux store
           store.dispatch(clearToken());
 
           // Show toast notification
-          toast.error(errorMessage, {
-            autoClose: 3000,
-            toastId: 'session-expired',
-            onClose: () => {
-              // Redirect to login page after toast closes
-              if (typeof window !== 'undefined' && window.location.pathname !== '/login') {
-                window.location.href = '/login';
-              }
-            }
-          });
+          // toast.error(errorMessage, {
+          //   autoClose: 3000,
+          //   toastId: 'session-expired',
+          //   onClose: () => {
+          //     // Redirect to login page after toast closes
+          //     if (typeof window !== 'undefined' && window.location.pathname !== '/login') {
+          //       window.location.href = '/login';
+          //     }
+          //   }
+          // });
           break;
         case 404:
-          // Check if this is a user-related endpoint (user profile, auth, etc.)
           const url = error.config?.url || '';
           const method = error.config?.method || '';
-          const isUserRelatedEndpoint = url.includes('/user') || 
-                                       url.includes('/auth') || 
-                                       url.includes('/profile') ||
-                                       url.includes('/me') ||
-                                       url.includes('/users') ||
-                                       (method === 'GET' && (url.includes('/profile') || url.includes('/account')));
-          
+          const isUserRelatedEndpoint = url.includes('/user') ||
+            url.includes('/auth') ||
+            url.includes('/profile') ||
+            url.includes('/me') ||
+            url.includes('/users') ||
+            (method === 'GET' && (url.includes('/profile') || url.includes('/account')));
+
           if (isUserRelatedEndpoint) {
             // User-related resource not found - likely user was deleted
             errorMessage = 'User account not found. Please login again.';
             errorStatus = 'USER_NOT_FOUND';
-            
-            // Clear the token from Redux store
             store.dispatch(clearToken());
-            
+
             // Show toast notification
             toast.error(errorMessage, {
               autoClose: 3000,
@@ -189,7 +182,6 @@ apiClient.interceptors.response.use(
     } else if (error.request) {
       errorMessage = 'No response from server';
       errorStatus = 'NO_RESPONSE';
-      // Optionally, clear token and redirect
       store.dispatch(clearToken());
       if (typeof window !== 'undefined' && window.location.pathname !== '/login') {
         window.location.href = '/login';
@@ -217,16 +209,15 @@ axiosRetry(apiClient, {
     const status = error.status || error.response?.status;
     const statusStr = String(status);
     const statusNum = Number(status);
-    // Don't retry on 401 (unauthorized) or 404 (user not found) errors
     const url = error.config?.url || '';
     const method = error.config?.method || '';
-    const isUserRelatedEndpoint = url.includes('/user') || 
-                                 url.includes('/auth') || 
-                                 url.includes('/profile') ||
-                                 url.includes('/me') ||
-                                 url.includes('/users') ||
-                                 (method === 'GET' && (url.includes('/profile') || url.includes('/account')));
-    
+    const isUserRelatedEndpoint = url.includes('/user') ||
+      url.includes('/auth') ||
+      url.includes('/profile') ||
+      url.includes('/me') ||
+      url.includes('/users') ||
+      (method === 'GET' && (url.includes('/profile') || url.includes('/account')));
+
     const shouldRetry =
       !status ||
       (statusNum !== 401 && statusNum !== 404 && (statusNum === 500 || statusNum === 503 || statusStr === 'NETWORK_ERROR'));
@@ -254,7 +245,6 @@ export const handleErrors = (error: any, source: string) => {
   return errorDetails;
 };
 
-// Token refresh utility (if your backend supports it)
 export const refreshToken = async (): Promise<boolean> => {
   try {
     const currentToken = store.getState().user.token;
@@ -271,7 +261,6 @@ export const refreshToken = async (): Promise<boolean> => {
     //   return true;
     // }
 
-    // For now, return false to trigger logout
     return false;
   } catch (error) {
     console.error('Token refresh failed:', error);
@@ -282,20 +271,18 @@ export const refreshToken = async (): Promise<boolean> => {
 // Enhanced error handler with token refresh attempt
 export const handleAuthError = async (error: any, source: string) => {
   if (error.status === 'UNAUTHORIZED' || error.status === 401 || error.status === 'USER_NOT_FOUND') {
-    // Try to refresh token first
     const refreshSuccess = await refreshToken();
     if (!refreshSuccess) {
-      // If refresh fails, clear token and redirect to login
       store.dispatch(clearToken());
-      toast.error('Session expired. Please login again.', {
-        autoClose: 3000,
-        toastId: 'session-expired',
-        onClose: () => {
-          if (typeof window !== 'undefined' && window.location.pathname !== '/login') {
-            window.location.href = '/login';
-          }
-        }
-      });
+      // toast.error('Session expired. Please login again.', {
+      //   autoClose: 3000,
+      //   toastId: 'session-expired',
+      //   onClose: () => {
+      //     if (typeof window !== 'undefined' && window.location.pathname !== '/login') {
+      //       window.location.href = '/login';
+      //     }
+      //   }
+      // });
     }
   }
 

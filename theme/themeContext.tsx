@@ -10,7 +10,7 @@ interface ThemeContextType {
 
 const ThemeContext = createContext<ThemeContextType>({
   mode: 'light',
-  toggleTheme: () => {},
+  toggleTheme: () => { },
 });
 
 export const ThemeProvider = ({ children }: { children: ReactNode }) => {
