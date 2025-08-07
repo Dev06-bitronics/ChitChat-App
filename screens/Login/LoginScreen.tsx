@@ -3,14 +3,12 @@ import React, { useState } from 'react';
 import styles from './LoginScreen.module.css';
 import { FaUser, FaLock, FaPhone, FaRegSmile } from 'react-icons/fa';
 import Image from 'next/image';
-import { EMAIL_REGEX, PASSWORD_REGEX, PHONE_REGEX } from '@/constants/regex';
-import { ToastContainer, toast } from 'react-toastify';
+import { PASSWORD_REGEX, PHONE_REGEX } from '@/constants/regex';
+import { MESSAGES, UI, VALIDATION } from '@/constants';
+import { toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
-import { GOOGLE_AUTH, USER_LOGIN, USER_REGISTER } from '@/api/api';
-import { useDispatch } from 'react-redux';
-import { setUser } from '@/redux/reducers/userReducer';
+import { GOOGLE_AUTH } from '@/api/api';
 import Loader from '@/components/Loader/Loader';
-import { jwtDecode } from 'jwt-decode';
 import { useAuth } from '@/context/AuthContext';
 
 const LoginScreen: React.FC = () => {
@@ -32,15 +30,15 @@ const LoginScreen: React.FC = () => {
   const onLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.loginNumber || !form.loginPassword) {
-      toast.error('Please enter both mobile number and password');
+      toast.error(VALIDATION.LOGIN.REQUIRED_FIELDS);
       return;
     }
     if (!PHONE_REGEX.test(form.loginNumber)) {
-      toast.error('Enter a valid 10-digit mobile number');
+      toast.error(VALIDATION.LOGIN.INVALID_PHONE);
       return;
     }
     if (!PASSWORD_REGEX.test(form.loginPassword)) {
-      toast.error('Password must be at least 8 characters and include a number');
+      toast.error(VALIDATION.LOGIN.INVALID_PASSWORD);
       return;
     }
     await signIn(form.loginNumber, form.loginPassword);
@@ -49,19 +47,19 @@ const LoginScreen: React.FC = () => {
   const onSignup = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.signupName || !form.signupNumber || !form.signupPassword) {
-      toast.error('Please fill all fields');
+      toast.error(VALIDATION.SIGNUP.REQUIRED_FIELDS);
       return;
     }
     if (form.signupName.length < 2) {
-      toast.error('Name must be at least 2 characters');
+      toast.error(VALIDATION.SIGNUP.NAME_TOO_SHORT);
       return;
     }
     if (!PHONE_REGEX.test(form.signupNumber)) {
-      toast.error('Enter a valid 10-digit mobile number');
+      toast.error(VALIDATION.SIGNUP.INVALID_PHONE);
       return;
     }
     if (!PASSWORD_REGEX.test(form.signupPassword)) {
-      toast.error('Password must be at least 8 characters and include a number');
+      toast.error(VALIDATION.SIGNUP.INVALID_PASSWORD);
       return;
     }
     await signUp(form.signupName, form.signupNumber, form.signupPassword);
@@ -77,15 +75,15 @@ const LoginScreen: React.FC = () => {
         // handle google login
       }
     } catch (error: any) {
-      toast.error(error?.response?.data?.message || error?.message || 'Signup failed');
+      toast.error(error?.response?.data?.message || error?.message || MESSAGES.AUTH.SIGNUP_FAILED);
     }
   }
-  const handleFacebook = () => toast.info('Facebook SSO coming soon!');
-  const handleGithub = () => toast.info('GitHub SSO coming soon!');
+  const handleFacebook = () => toast.info(MESSAGES.SSO.FACEBOOK_COMING_SOON);
+  const handleGithub = () => toast.info(MESSAGES.SSO.GITHUB_COMING_SOON);
 
   return (
     <div className={styles.loginBg}>
-      <Loader visible={loading} message='loading...' />
+      <Loader visible={loading} message={MESSAGES.LOADING.DEFAULT} />
       {/* <ToastContainer position="top-center" autoClose={2500} hideProgressBar={false} newestOnTop closeOnClick pauseOnFocusLoss draggable pauseOnHover /> */}
       {/* Animated SVG Waves Background */}
       <svg className={styles.wavesBg} viewBox="0 0 1440 220" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -105,27 +103,27 @@ const LoginScreen: React.FC = () => {
       </div>
       <div className={styles.centerBox}>
         <div className={styles.logoSection}>
-          <img src="https://www.chitchat.gg/images/logo-darkmode.png" alt="Chat App Logo" className={styles.logo} />
-          <p className={styles.animatedSubtitle}>Connect. Chat. Share. <FaRegSmile style={{ color: 'var(--color-primary)', marginLeft: 4, verticalAlign: 'middle' }} /></p>
+          <img src="https://www.chitchat.gg/images/logo-darkmode.png" alt={UI.LOGIN.LOGO_ALT} className={styles.logo} />
+          <p className={styles.animatedSubtitle}>{UI.LOGIN.TAGLINE} <FaRegSmile style={{ color: 'var(--color-primary)', marginLeft: 4, verticalAlign: 'middle' }} /></p>
         </div>
         <div className={styles.mainTypewriterDescription}>
-          Talk to strangers, Make friends!
+          {UI.LOGIN.MAIN_DESCRIPTION}
         </div>
         <div className={styles.secondaryDescription}>
-          Experience a random chat alternative to find friends, connect with people, and chat with strangers from all over the world!
+          {UI.LOGIN.SECONDARY_DESCRIPTION}
         </div>
         <div className={styles.formToggleWrap}>
           <button
             className={`${styles.toggleButton} ${isLogin ? styles.active : ''}`}
             onClick={() => setIsLogin(true)}
           >
-            Sign In
+            {UI.LOGIN.SIGN_IN}
           </button>
           <button
             className={`${styles.toggleButton} ${!isLogin ? styles.active : ''}`}
             onClick={() => setIsLogin(false)}
           >
-            Sign Up
+            {UI.LOGIN.SIGN_UP}
           </button>
         </div>
         <form
@@ -138,7 +136,7 @@ const LoginScreen: React.FC = () => {
               <FaUser className={styles.inputIcon} />
               <input
                 type="text"
-                placeholder="Full Name"
+                placeholder={UI.LOGIN.NAME_PLACEHOLDER}
                 name="signupName"
                 value={form.signupName}
                 onChange={handleInputChange}
@@ -151,7 +149,7 @@ const LoginScreen: React.FC = () => {
             <FaPhone className={styles.inputIcon} />
             <input
               type="tel"
-              placeholder="Mobile Number"
+              placeholder={UI.LOGIN.MOBILE_PLACEHOLDER}
               name={isLogin ? 'loginNumber' : 'signupNumber'}
               value={isLogin ? form.loginNumber : form.signupNumber}
               onChange={handleInputChange}
@@ -163,7 +161,7 @@ const LoginScreen: React.FC = () => {
             <FaLock className={styles.inputIcon} />
             <input
               type="password"
-              placeholder="Password"
+              placeholder={UI.LOGIN.PASSWORD_PLACEHOLDER}
               name={isLogin ? 'loginPassword' : 'signupPassword'}
               value={isLogin ? form.loginPassword : form.signupPassword}
               onChange={handleInputChange}
@@ -172,7 +170,7 @@ const LoginScreen: React.FC = () => {
             />
           </div>
           <button type="submit" className={styles.submitBtn}>
-            {isLogin ? 'Sign In' : 'Sign Up'}
+            {isLogin ? UI.LOGIN.SIGN_IN : UI.LOGIN.SIGN_UP}
           </button>
         </form>
         {/* SSO Divider and Buttons */}

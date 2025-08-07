@@ -1,13 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { User } from '@/screens/ChatScreen/ChatScreen.types';
 import { ADD_USERS_TO_GROUP } from '@/api/api';
+import { MESSAGES, UI } from '@/constants';
 //@ts-ignore
 import styles from './AddUsersModal.module.css';
 
 interface ManageUsersModalProps {
   open: boolean;
   onClose: () => void;
-  allUsers: User[]; // Keep this for remove mode (current group members)
+  allUsers: User[];
   groupId: string;
   groupName: string;
   currentParticipants: string[];
@@ -33,7 +34,6 @@ const ManageUsersModal: React.FC<ManageUsersModalProps> = ({
   const [availableUsersForAdd, setAvailableUsersForAdd] = useState<User[]>([]);
   const [loading, setLoading] = useState(false);
 
-  // Fetch available users for add mode when modal opens
   useEffect(() => {
     if (open && mode === 'add') {
       fetchAvailableUsers();
@@ -57,14 +57,13 @@ const ManageUsersModal: React.FC<ManageUsersModalProps> = ({
     }
   };
 
-  // Filtering users based on mode
   const availableUsers = mode === 'add'
     ? availableUsersForAdd
     : allUsers.filter(user => !user.isGroup && currentParticipants.includes(user._id) && user._id !== myUserId);
 
   const handleUserToggle = (userId: string) => {
-    setSelectedUsers(prev => 
-      prev.includes(userId) 
+    setSelectedUsers(prev =>
+      prev.includes(userId)
         ? prev.filter(id => id !== userId)
         : [...prev, userId]
     );
@@ -93,9 +92,9 @@ const ManageUsersModal: React.FC<ManageUsersModalProps> = ({
     <div className={styles.modalOverlay}>
       <div className={styles.modalContent}>
         <div className={styles.modalHeader}>
-          <h3>{mode === 'add' ? 'Add Users to' : 'Remove Users from'} "{groupName}"</h3>
+          <h3>{mode === 'add' ? UI.MODALS.ADD_USERS_TO_GROUP(groupName) : UI.MODALS.REMOVE_USERS_FROM_GROUP(groupName)}</h3>
           <button className={styles.closeBtn} onClick={handleClose}>
-            ×
+            {UI.BUTTONS.CLOSE}
           </button>
         </div>
 
@@ -103,26 +102,25 @@ const ManageUsersModal: React.FC<ManageUsersModalProps> = ({
           {loading && mode === 'add' ? (
             <div className={styles.loadingContainer}>
               <div className={styles.spinner}></div>
-              <p>Loading available users...</p>
+              <p>{MESSAGES.LOADING.AVAILABLE_USERS}</p>
             </div>
           ) : availableUsers.length === 0 ? (
             <p className={styles.noUsers}>
               {mode === 'add'
-                ? 'No users available to add to this group.'
-                : 'No users available to remove from this group.'}
+                ? UI.EMPTY_STATES.NO_USERS_AVAILABLE_ADD
+                : UI.EMPTY_STATES.NO_USERS_AVAILABLE_REMOVE}
             </p>
           ) : (
             <>
               <p className={styles.instruction}>
-                Select users to {mode === 'add' ? 'add to' : 'remove from'} the group:
+                {mode === 'add' ? UI.MODALS.SELECT_USERS_TO_ADD : UI.MODALS.SELECT_USERS_TO_REMOVE}
               </p>
               <div className={styles.usersList}>
                 {availableUsers.map(user => (
                   <div
                     key={user._id}
-                    className={`${styles.userItem} ${
-                      selectedUsers.includes(user._id) ? styles.selected : ''
-                    }`}
+                    className={`${styles.userItem} ${selectedUsers.includes(user._id) ? styles.selected : ''
+                      }`}
                     onClick={() => handleUserToggle(user._id)}
                   >
                     <div className={styles.userAvatar}>
@@ -130,7 +128,7 @@ const ManageUsersModal: React.FC<ManageUsersModalProps> = ({
                         <img src={user.avatar} alt={user.name} />
                       ) : (
                         <div className={styles.avatarPlaceholder}>
-                          {user.name?.charAt(0)?.toUpperCase() || 'U'}
+                          {user.name?.charAt(0)?.toUpperCase() || UI.LABELS.USER.charAt(0)}
                         </div>
                       )}
                     </div>
@@ -157,14 +155,14 @@ const ManageUsersModal: React.FC<ManageUsersModalProps> = ({
 
         <div className={styles.modalFooter}>
           <button className={styles.cancelBtn} onClick={handleClose}>
-            Cancel
+            {UI.BUTTONS.CANCEL}
           </button>
           <button
             className={mode === 'add' ? styles.addBtn : `${styles.addBtn} ${styles.removeBtn}`}
             onClick={handleSubmit}
             disabled={selectedUsers.length === 0}
           >
-            {mode === 'add' ? 'Add' : 'Remove'} {selectedUsers.length > 0 ? `${selectedUsers.length} ` : ''}User{selectedUsers.length !== 1 ? 's' : ''}
+            {mode === 'add' ? UI.BUTTONS.ADD : UI.BUTTONS.REMOVE} {selectedUsers.length > 0 ? `${selectedUsers.length} ` : ''}{selectedUsers.length !== 1 ? UI.LABELS.USERS : UI.LABELS.USER}
           </button>
         </div>
       </div>

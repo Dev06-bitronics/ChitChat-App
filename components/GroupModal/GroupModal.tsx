@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
+//@ts-ignore
 import styles from './GroupModal.module.css';
 import { User } from '@/screens/ChatScreen/ChatScreen.types';
+import { MESSAGES, UI } from '@/constants';
 import { GROUP_ALL_USERS } from '@/api/api';
 
 interface GroupModalProps {
@@ -15,8 +17,6 @@ const GroupModal: React.FC<GroupModalProps> = ({ open, onClose, myUserId, onCrea
   const [selectedUsers, setSelectedUsers] = useState<User[]>([]);
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(false);
-
-  // Fetch users when modal opens
   useEffect(() => {
     if (open) {
       fetchAllUsers();
@@ -74,9 +74,9 @@ const GroupModal: React.FC<GroupModalProps> = ({ open, onClose, myUserId, onCrea
     <div className={styles.modalOverlay}>
       <div className={styles.modalContent}>
         <div className={styles.modalHeader}>
-          <h3>Create New Group</h3>
+          <h3>{UI.MODALS.CREATE_NEW_GROUP}</h3>
           <button className={styles.closeBtn} onClick={handleClose}>
-            ×
+            {UI.BUTTONS.CLOSE}
           </button>
         </div>
 
@@ -84,7 +84,7 @@ const GroupModal: React.FC<GroupModalProps> = ({ open, onClose, myUserId, onCrea
           <div className={styles.inputWrapper}>
             <input
               type="text"
-              placeholder="Group Name (optional)"
+              placeholder={UI.MODALS.GROUP_NAME_PLACEHOLDER}
               value={groupName}
               onChange={e => setGroupName(e.target.value)}
               className={styles.input}
@@ -94,22 +94,21 @@ const GroupModal: React.FC<GroupModalProps> = ({ open, onClose, myUserId, onCrea
           {loading ? (
             <div className={styles.loadingContainer}>
               <div className={styles.spinner}></div>
-              <p>Loading users...</p>
+              <p>{MESSAGES.LOADING.USERS}</p>
             </div>
           ) : users.length === 0 ? (
-            <p className={styles.noUsers}>No users available to add to the group.</p>
+            <p className={styles.noUsers}>{UI.EMPTY_STATES.NO_USERS_AVAILABLE_GROUP}</p>
           ) : (
             <>
               <p className={styles.instruction}>
-                Select users to add to the group:
+                {UI.MODALS.SELECT_USERS_INSTRUCTION}
               </p>
               <div className={styles.usersList}>
                 {users.map(user => (
                   <div
                     key={user._id}
-                    className={`${styles.userItem} ${
-                      selectedUsers.find(u => u._id === user._id) ? styles.selected : ''
-                    }`}
+                    className={`${styles.userItem} ${selectedUsers.find(u => u._id === user._id) ? styles.selected : ''
+                      }`}
                     onClick={() => handleUserToggle(user._id)}
                   >
                     <div className={styles.userAvatar}>
@@ -117,14 +116,14 @@ const GroupModal: React.FC<GroupModalProps> = ({ open, onClose, myUserId, onCrea
                         <img src={user.avatar} alt={user.name} />
                       ) : (
                         <div className={styles.avatarPlaceholder}>
-                          {user.name?.charAt(0)?.toUpperCase() || 'U'}
+                          {user.name?.charAt(0)?.toUpperCase() || UI.LABELS.USER.charAt(0)}
                         </div>
                       )}
                     </div>
                     <div className={styles.userInfo}>
                       <div className={styles.userName}>{user.name}</div>
                       {user.isOnline && (
-                        <div className={styles.onlineStatus}>Online</div>
+                        <div className={styles.onlineStatus}>{UI.STATUS.ONLINE}</div>
                       )}
                     </div>
                     <div className={styles.checkbox}>
@@ -139,14 +138,14 @@ const GroupModal: React.FC<GroupModalProps> = ({ open, onClose, myUserId, onCrea
 
         <div className={styles.modalFooter}>
           <button className={styles.cancelBtn} onClick={handleClose}>
-            Cancel
+            {UI.BUTTONS.CANCEL}
           </button>
           <button
             className={styles.createBtn}
             onClick={handleCreate}
             disabled={selectedUsers.length === 0 || loading}
           >
-            Create Group {selectedUsers.length > 0 ? `(${selectedUsers.length} users)` : ''}
+            {UI.BUTTONS.CREATE} {UI.LABELS.GROUP} {selectedUsers.length > 0 ? `(${selectedUsers.length} ${selectedUsers.length === 1 ? UI.LABELS.USER.toLowerCase() : UI.LABELS.USERS.toLowerCase()})` : ''}
           </button>
         </div>
       </div>

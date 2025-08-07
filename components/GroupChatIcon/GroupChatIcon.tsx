@@ -1,6 +1,8 @@
 import React from 'react';
 import { BsPeople } from 'react-icons/bs';
+//@ts-ignore
 import styles from './GroupChatIcon.module.css';
+import { UI } from '@/constants';
 
 interface GroupChatIconProps {
   name?: string;
@@ -8,9 +10,9 @@ interface GroupChatIconProps {
 }
 
 const GroupChatIcon: React.FC<GroupChatIconProps> = ({ name, size = 40 }) => {
-  const initials = name 
+  const initials = name
     ? name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
-    : 'G';
+    : UI.LABELS.GROUP.charAt(0);
 
   return (
     <div 

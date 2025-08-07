@@ -1,5 +1,6 @@
 import React from 'react';
-import styles from './Loader.module.css'; 
+//@ts-ignore
+import styles from './Loader.module.css';
 
 interface LoaderProps {
   visible?: boolean;

@@ -2,6 +2,7 @@ import React, { createContext, useState, useContext, useCallback } from 'react';
 import { USER_LOGIN, USER_REGISTER } from '@/api/api';
 import { useDispatch } from 'react-redux';
 import { setUser, clearToken } from '@/redux/reducers/userReducer';
+import { MESSAGES } from '@/constants';
 import { toast } from 'react-toastify';
 import { jwtDecode } from 'jwt-decode';
 
@@ -54,20 +55,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             console.log(decoded, "decoded------------------->");
             userId = decoded.id || decoded.user_id || decoded.sub || decoded._id;
           } catch (e) {
-            console.error('Failed to decode JWT', e);
+            console.error(MESSAGES.AUTH.JWT_DECODE_ERROR, e);
           }
         }
         if (token && userId) {
           dispatch(setUser({ token, name, id: userId }));
           await new Promise(resolve => setTimeout(resolve, 100));
         }
-        toast.success(response.data?.message || 'Login successful!');
+        toast.success(response.data?.message || MESSAGES.AUTH.LOGIN_SUCCESS);
         return response;
       } else {
-        toast.error(response.data?.message || 'Login failed');
+        toast.error(response.data?.message || MESSAGES.AUTH.LOGIN_FAILED);
       }
     } catch (error: any) {
-      toast.error(error?.response?.data?.message || error?.message || 'Login failed');
+      toast.error(error?.response?.data?.message || error?.message || MESSAGES.AUTH.LOGIN_FAILED);
       console.log(error, "error------------------->");
     } finally {
       setLoading(false);
@@ -87,19 +88,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             const decoded: any = jwtDecode(token);
             userId = decoded.id || decoded.user_id || decoded.sub || decoded._id;
           } catch (e) {
-            console.error('Failed to decode JWT', e);
+            console.error(MESSAGES.AUTH.JWT_DECODE_ERROR, e);
           }
         }
         if (token && userId) {
           dispatch(setUser({ token, name: userName, id: userId }));
         }
-        toast.success(response.data?.message || 'Signup successful!');
+        toast.success(response.data?.message || MESSAGES.AUTH.SIGNUP_SUCCESS);
         return response;
       } else {
-        toast.error(response.data?.message || 'Signup failed');
+        toast.error(response.data?.message || MESSAGES.AUTH.SIGNUP_FAILED);
       }
     } catch (error: any) {
-      toast.error(error?.response?.data?.message || error?.message || 'Signup failed');
+      toast.error(error?.response?.data?.message || error?.message || MESSAGES.AUTH.SIGNUP_FAILED);
     } finally {
       setLoading(false);
     }
@@ -107,7 +108,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const logout = useCallback(async () => {
     try {
-      toast.success('Logged out successfully');
+      toast.success(MESSAGES.AUTH.LOGOUT_SUCCESS);
       dispatch(clearToken());
       // const response = await USER_LOGOUT();
       // if (response && response.status === 201) {
@@ -116,7 +117,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       //   toast.error(response?.data?.message || 'Logout failed');
       // }
     } catch (error: any) {
-      toast.error(error?.response?.data?.message || error?.message || 'Logout failed');
+      toast.error(error?.response?.data?.message || error?.message || MESSAGES.AUTH.LOGOUT_FAILED);
     }
   }, [dispatch]);
 
@@ -130,7 +131,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 export const useAuth = () => {
   const context = useContext(AuthContext);
   if (context === undefined) {
-    throw new Error('useAuth must be used within an AuthProvider');
+    throw new Error(MESSAGES.AUTH.AUTH_CONTEXT_ERROR);
   }
   return context;
 };

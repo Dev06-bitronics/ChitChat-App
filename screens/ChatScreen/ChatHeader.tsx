@@ -3,8 +3,7 @@ import { User } from './ChatScreen.types';
 //@ts-ignore
 import styles from './ChatScreen.module.css';
 import { generateInitials } from '@/utils/helperFunctions';
-
-
+import { UI } from '@/constants';
 
 interface ChatHeaderProps {
   selectedUser: User | null;
@@ -72,9 +71,9 @@ const ChatHeader: React.FC<ChatHeaderProps> = ({
       <div>
         <div className={styles.userName}>
           {selectedUser?.name}
-          {unreadCount > 0 && (
+          {/* {unreadCount > 0 && (
             <span className={styles.unreadBadge} style={{ marginLeft: 8 }}>{unreadCount}</span>
-          )}
+          )} */}
         </div>
         <div className={styles.userStatus}>{getLastSeenStatus(selectedUser)}</div>
       </div>
@@ -85,7 +84,7 @@ const ChatHeader: React.FC<ChatHeaderProps> = ({
             <button
               className={styles.groupSettingsBtn}
               onClick={() => setShowGroupSettings(!showGroupSettings)}
-              title="Group Settings"
+              title={UI.CHAT_HEADER.GROUP_SETTINGS}
             >
               ⚙️
             </button>
@@ -101,7 +100,7 @@ const ChatHeader: React.FC<ChatHeaderProps> = ({
                       setShowGroupSettings(false);
                     }}
                   >
-                    � Leave Group
+                    {UI.CHAT_HEADER.LEAVE_GROUP}
                   </button>
                 )}
 
@@ -116,7 +115,7 @@ const ChatHeader: React.FC<ChatHeaderProps> = ({
                           setShowGroupSettings(false);
                         }}
                       >
-                        👥 Add Users
+                        {UI.CHAT_HEADER.ADD_USERS}
                       </button>
                     )}
                     {onRemoveUsers && (
@@ -127,7 +126,7 @@ const ChatHeader: React.FC<ChatHeaderProps> = ({
                           setShowGroupSettings(false);
                         }}
                       >
-                        👤 Remove Users
+                        {UI.CHAT_HEADER.REMOVE_USERS}
                       </button>
                     )}
                     {onDeleteGroup && (
@@ -138,7 +137,7 @@ const ChatHeader: React.FC<ChatHeaderProps> = ({
                           setShowGroupSettings(false);
                         }}
                       >
-                        �️ Delete Group
+                        {UI.CHAT_HEADER.DELETE_GROUP}
                       </button>
                     )}
                   </>
@@ -149,7 +148,7 @@ const ChatHeader: React.FC<ChatHeaderProps> = ({
         )}
 
         {onMenu && (
-          <button className={styles.settingsBtn} onClick={onMenu} title="Menu">
+          <button className={styles.settingsBtn} onClick={onMenu} title={UI.CHAT_HEADER.MENU}>
             ☰
           </button>
         )}

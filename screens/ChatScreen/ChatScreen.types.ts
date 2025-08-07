@@ -1,71 +1,3 @@
-// // Shared types for ChatScreen and related components/hooks
-// export interface GroupChat {
-//   _id: string;
-//   name?: string;
-//   members: User[];
-//   createdBy: string;
-//   createdAt: string;
-//   avatar?: string;
-//   isGroup: true;
-//   lastMessage?: {
-//     content: string;
-//     senderId: string;
-//     timestamp: string;
-//   } | null;
-// }
-
-// export interface User {
-//   _id: string;
-//   id: string;
-//   name: string;
-//   avatar?: string;
-//   email?: string;
-//   online?: boolean;
-//   description?: string;
-//   isOnline?: boolean;
-//   lastMessage?: {
-//     content: string;
-//     senderId: string;
-//     timestamp: string;
-//   } | null;
-//   lastSeen?: string;
-//   lastMessageSender?: string;
-//   lastMessageTimestamp?: string;
-//   unreadCount?: number;
-// }
-
-// export interface Message {
-//   id: string;
-//   _id: string;
-//   senderId?: {
-//     _id: string;
-//     name?: string;
-//   } | null; 
-//   receiverId?: {
-//     _id: string;
-//     name?: string;
-//   } | null;
-//   isPinned?: boolean;
-//   conversationId?: string;
-//   content: string;
-//   type: 'text' | 'image' | 'file' | 'emoji' | 'audio' | 'video';
-//   timestamp?: string;
-//   createdAt?: string;
-//   updatedAt?: string;
-//   deliveredAt?: string;
-//   seenAt?: string;
-//   fileUrl?: string;
-//   fileName?: string;
-//   fileType?: string;
-//   fileSize?: number;
-//   reactions?:  any;
-//   [key: string]: any;
-//   seen?: boolean;
-//   clientId?: string;
-//   status?: 'sent' | 'delivered' | 'seen';
-// } 
-
-// Shared types for ChatScreen and related components/hooks
 export interface BaseUser {
   _id: string;
   name: string;
@@ -103,19 +35,19 @@ export interface GroupChat {
 
 export type ChatParticipant = User | GroupChat;
 export interface User extends BaseUser {
-  id?: string; // Alias for _id
+  id?: string;
   description?: string;
-  isOnline?: boolean; // Alias for online
+  isOnline?: boolean;
   unreadCount?: number;
   lastMessage?: string | { content: string; senderId: string; timestamp: string } | null;
   lastMessageTimestamp?: string;
   members?: any;
-  isGroup?: boolean; // Indicates if this is a group chat
-  timestamp?: string; // Last message timestamp
-  participants?: string[]; // For group compatibility
-  participantsStatus?: { [userId: string]: 'joined' | 'pending' }; // For group compatibility
-  createdBy?: string; // For group compatibility
-  createdAt?: string; // For group compatibility
+  isGroup?: boolean;
+  timestamp?: string;
+  participants?: string[];
+  participantsStatus?: { [userId: string]: 'joined' | 'pending' };
+  createdBy?: string;
+  createdAt?: string;
 }
 
 export interface MessagePreview {
@@ -127,8 +59,8 @@ export interface MessagePreview {
 }
 
 export interface Message {
-  id: string; // Client-side ID
-  _id: string; // Server-side ID
+  id: string;
+  _id: string;
   senderId: {
     _id: string;
     name: string;
@@ -138,7 +70,7 @@ export interface Message {
     _id: string;
     name?: string;
   };
-  groupId?: string; // For group messages
+  groupId?: string;
   isPinned?: boolean;
   conversationId?: string;
   content: string;
@@ -152,7 +84,7 @@ export interface Message {
   fileName?: string;
   fileType?: string;
   fileSize?: number;
-  reactions?: Record<string, string>; // { userId: emoji }
+  reactions?: Record<string, string>;
   replyToMessageId?: string;
   replyToMessage?: {
     content: string;

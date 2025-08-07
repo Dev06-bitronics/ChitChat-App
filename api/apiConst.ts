@@ -2,17 +2,17 @@ import axios from 'axios';
 import axiosRetry from 'axios-retry';
 import { store } from '@/redux/store/store';
 import { clearToken } from '@/redux/reducers/userReducer';
+import { MESSAGES, API } from '@/constants';
 import { toast } from 'react-toastify';
 import { jwtDecode } from 'jwt-decode';
 
-// Show/dismiss toasts for online/offline events
 if (typeof window !== 'undefined') {
   window.addEventListener('offline', () => {
-    toast.error('No internet connection', { autoClose: false, toastId: 'no-internet' });
+    toast.error(MESSAGES.NETWORK.NO_INTERNET, { autoClose: false, toastId: API.TOAST_IDS.NO_INTERNET });
   });
   window.addEventListener('online', () => {
-    toast.dismiss('no-internet');
-    toast.success('Back online', { autoClose: 2500, toastId: 'back-online' });
+    toast.dismiss(API.TOAST_IDS.NO_INTERNET);
+    toast.success(MESSAGES.NETWORK.BACK_ONLINE, { autoClose: 2500, toastId: API.TOAST_IDS.BACK_ONLINE });
   });
 }
 
@@ -20,7 +20,7 @@ const getBaseUrl = () => {
   if (typeof process !== 'undefined' && process.env && process.env.NEXT_PUBLIC_BASE_URL) {
     return process.env.NEXT_PUBLIC_BASE_URL;
   }
-  return 'http://192.168.0.5:3001/';
+  return API.DEFAULTS.BASE_URL_FALLBACK;
 };
 
 export const BASE_URL = getBaseUrl();
@@ -40,19 +40,17 @@ class APIError extends Error {
 
 const apiClient = axios.create({
   baseURL: BASE_URL,
-  timeout: 25000,
+  timeout: API.DEFAULTS.TIMEOUT,
   headers: {
-    'Content-Type': 'application/json',
+    'Content-Type': API.CONTENT_TYPES.JSON,
   },
 });
 
-// Attach token to all requests
 apiClient.interceptors.request.use(
   (config) => {
     const token = store.getState().user.token;
 
     if (token) {
-      // Check if token is expired before making the request
       try {
         const decoded: any = jwtDecode(token);
         const currentTime = Date.now() / 1000;
@@ -75,7 +73,6 @@ apiClient.interceptors.request.use(
         config.headers = config.headers || {};
         config.headers['Authorization'] = `Bearer ${token}`;
       } catch (error) {
-        // Invalid token format, clear it
         store.dispatch(clearToken());
         toast.error('Invalid session. Please login again.', {
           autoClose: 3000,
@@ -94,16 +91,16 @@ apiClient.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
-// Request interceptor: check network connection
+// checking network connection
 apiClient.interceptors.request.use(
   async config => {
     if (typeof window !== 'undefined' && !navigator.onLine) {
-      toast.error('No internet connection', { autoClose: false, toastId: 'no-internet' });
+      toast.error(MESSAGES.NETWORK.NO_INTERNET, { autoClose: false, toastId: API.TOAST_IDS.NO_INTERNET });
       throw new APIError(
-        'No internet connection',
-        'NETWORK_ERROR',
+        MESSAGES.NETWORK.NO_INTERNET,
+        API.ERRORS.NETWORK_ERROR,
         null,
-        new Error('No internet connection'),
+        new Error(MESSAGES.NETWORK.NO_INTERNET),
       );
     }
     return config;
@@ -111,12 +108,12 @@ apiClient.interceptors.request.use(
   error => Promise.reject(error),
 );
 
-// Response interceptor: handle errors and status codes
+// handling errors and status codes globally
 apiClient.interceptors.response.use(
   response => response,
   error => {
-    let errorMessage = 'An unexpected error occurred';
-    let errorStatus = error.response?.status || 'UNKNOWN';
+    let errorMessage: string = API.ERRORS.UNEXPECTED_ERROR;
+    let errorStatus = error.response?.status || API.ERRORS.UNKNOWN_STATUS;
     let errorData = error.response?.data || null;
 
     if (error.response) {
@@ -149,39 +146,36 @@ apiClient.interceptors.response.use(
             (method === 'GET' && (url.includes('/profile') || url.includes('/account')));
 
           if (isUserRelatedEndpoint) {
-            // User-related resource not found - likely user was deleted
-            errorMessage = 'User account not found. Please login again.';
-            errorStatus = 'USER_NOT_FOUND';
+            errorMessage = API.ERRORS.USER_NOT_FOUND;
+            errorStatus = API.ERROR_STATUS.USER_NOT_FOUND;
             store.dispatch(clearToken());
 
-            // Show toast notification
             toast.error(errorMessage, {
               autoClose: 3000,
               toastId: 'user-not-found',
               onClose: () => {
-                // Redirect to login page after toast closes
                 if (typeof window !== 'undefined' && window.location.pathname !== '/login') {
                   window.location.href = '/login';
                 }
               }
             });
           } else {
-            errorMessage = 'Resource not found';
+            errorMessage = API.ERRORS.RESOURCE_NOT_FOUND;
           }
           break;
         case 403:
-          errorMessage = 'Forbidden access';
+          errorMessage = API.ERRORS.FORBIDDEN_ACCESS;
           break;
         case 500:
-          errorMessage = 'Internal server error';
+          errorMessage = API.ERRORS.INTERNAL_SERVER_ERROR;
           break;
         default:
           errorMessage =
-            error.response.data?.message || 'Server error occurred';
+            error.response.data?.message || API.ERRORS.SERVER_ERROR;
       }
     } else if (error.request) {
-      errorMessage = 'No response from server';
-      errorStatus = 'NO_RESPONSE';
+      errorMessage = API.ERRORS.NO_RESPONSE;
+      errorStatus = API.ERROR_STATUS.NO_RESPONSE;
       store.dispatch(clearToken());
       if (typeof window !== 'undefined' && window.location.pathname !== '/login') {
         window.location.href = '/login';
@@ -209,14 +203,6 @@ axiosRetry(apiClient, {
     const status = error.status || error.response?.status;
     const statusStr = String(status);
     const statusNum = Number(status);
-    const url = error.config?.url || '';
-    const method = error.config?.method || '';
-    const isUserRelatedEndpoint = url.includes('/user') ||
-      url.includes('/auth') ||
-      url.includes('/profile') ||
-      url.includes('/me') ||
-      url.includes('/users') ||
-      (method === 'GET' && (url.includes('/profile') || url.includes('/account')));
 
     const shouldRetry =
       !status ||

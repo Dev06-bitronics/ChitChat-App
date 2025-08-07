@@ -36,7 +36,6 @@ export function getLastSeenStatus(user: any) {
 
 export function formatTo12Hour(time?: string) {
   if (!time || typeof time !== 'string') return '';
-  // Trying to parse as ISO string
   const date = new Date(time);
   if (!isNaN(date.getTime())) {
     let hours = date.getHours();
@@ -90,13 +89,10 @@ export function linkifyText(text: string) {
   });
 }
 
-// JWT Token validation utilities
 export const isTokenExpired = (token: string): boolean => {
   try {
     const decoded: any = jwtDecode(token);
     const currentTime = Date.now() / 1000;
-
-    // Checking if token has expiration time
     if (decoded.exp) {
       return decoded.exp < currentTime;
     }

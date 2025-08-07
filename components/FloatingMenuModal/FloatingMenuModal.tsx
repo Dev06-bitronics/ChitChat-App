@@ -1,10 +1,9 @@
 import React, { useEffect, useState } from 'react';
 //@ts-ignore
 import styles from './FloatingMenuModal.module.css';
-import { USER_LOGOUT, GET_PROFILE_DETAILS, GROUP_ALL_USERS } from '@/api/api';
+import { GET_PROFILE_DETAILS, GROUP_ALL_USERS } from '@/api/api';
+import { MESSAGES, UI } from '@/constants';
 import { useDispatch } from 'react-redux';
-import { clearToken } from '@/redux/reducers/userReducer';
-import { toast } from 'react-toastify';
 
 export interface FloatingMenuOption {
   icon: React.ReactNode;
@@ -46,7 +45,6 @@ const FloatingMenuModal: React.FC<FloatingMenuModalProps> = ({
   } | null>(null);
   const [loading, setLoading] = useState(false);
 
-  // Fetch profile data when modal opens
   useEffect(() => {
     if (open && !profileData) {
       fetchProfile();
@@ -61,16 +59,15 @@ const FloatingMenuModal: React.FC<FloatingMenuModalProps> = ({
         const profile = response.data?.data;
         if (profile) {
           setProfileData({
-            name: profile.name || 'User',
+            name: profile.name || UI.LABELS.USER,
             avatar: profile.avatar || user?.avatar || '/logo.png'
           });
         }
       }
     } catch (error) {
       console.error('Error fetching profile:', error);
-      // Fallback to user prop if API fails
       setProfileData({
-        name: user?.name || 'User',
+        name: user?.name || UI.LABELS.USER,
         avatar: user?.avatar || '/logo.png'
       });
     } finally {
@@ -78,23 +75,22 @@ const FloatingMenuModal: React.FC<FloatingMenuModalProps> = ({
     }
   };
 
-   const fetchAllUsers = async () => {
+  const fetchAllUsers = async () => {
     try {
       setLoading(true);
       const response = await GROUP_ALL_USERS();
       if (response && response.status === 200) {
         console.log(response.data, "response.groupdata------------------->");
-        
+
       }
     } catch (error) {
       console.error('Error fetching profile:', error);
-      
+
     } finally {
       setLoading(false);
     }
   };
 
-  // Close on click outside
   useEffect(() => {
     if (!open) return;
     function handleClick(e: MouseEvent) {
@@ -106,18 +102,15 @@ const FloatingMenuModal: React.FC<FloatingMenuModalProps> = ({
     return () => document.removeEventListener('mousedown', handleClick);
   }, [open, onClose]);
 
-  // Close on mouse leave (from overlay, not menu)
   const handleOverlayMouseLeave = (e: React.MouseEvent<HTMLDivElement>) => {
-    // Only close if mouse leaves the overlay, not when moving inside the menu
     if (e.relatedTarget && menuRef.current && menuRef.current.contains(e.relatedTarget as Node)) {
       return;
     }
     onClose();
   };
 
-  // Use profile data if available, otherwise fallback to user prop
-  const displayUser = profileData || user || { name: 'User', avatar: '/logo.png' };
-            
+  const displayUser = profileData || user || { name: UI.LABELS.USER, avatar: '/logo.png' };
+
   if (!open) return null;
   return (
     <div
@@ -128,20 +121,18 @@ const FloatingMenuModal: React.FC<FloatingMenuModalProps> = ({
       <div
         className={styles.menu}
         ref={menuRef}
-      // onMouseLeave removed from here
       >
         {displayUser && (
           <div className={styles.userHeader}>
             <img src={displayUser.avatar} alt={displayUser.name} className={styles.avatar} />
             <div className={styles.userName}>
-              {loading ? 'Loading...' : displayUser.name}
+              {loading ? MESSAGES.LOADING.DEFAULT : displayUser.name}
             </div>
           </div>
         )}
         <ul className={styles.optionsList}>
-          {/* Render all options except logout and dark mode */}
           {options.map((opt, idx) =>
-            (opt.label === 'Dark Mode' || opt.label === 'Sign Out') ? null : (
+            (opt.label === UI.MENU.DARK_MODE || opt.label === UI.MENU.SIGN_OUT) ? null : (
               <li key={idx} className={styles.option} onClick={opt.onClick} style={{ cursor: 'pointer' }}>
                 <span className={styles.icon}>{opt.icon}</span>
                 <span className={styles.label}>{opt.label}</span>
@@ -153,7 +144,7 @@ const FloatingMenuModal: React.FC<FloatingMenuModalProps> = ({
             )
           )}
           {/* Render dark mode option just above logout */}
-          {options.filter(opt => opt.label === 'Dark Mode').map((opt, idx) => (
+          {options.filter(opt => opt.label === UI.MENU.DARK_MODE).map((opt, idx) => (
             <li key={idx} className={styles.option} style={{ cursor: 'default' }}>
               <span className={styles.icon}>{opt.icon}</span>
               <span className={styles.label}>{opt.label}</span>
@@ -165,13 +156,12 @@ const FloatingMenuModal: React.FC<FloatingMenuModalProps> = ({
           ))}
           {/* Logout always last */}
           {options.map((opt, idx) =>
-            opt.label === 'Sign Out' ? (
+            opt.label === UI.MENU.SIGN_OUT ? (
               <li key={idx} className={styles.option} onClick={opt.onClick} style={{ cursor: 'pointer' }}>
                 <span className={styles.icon}>{opt.icon}</span>
                 <span className={styles.label}>{opt.label}</span>
                 {opt.customElement}
 
-                
                 {typeof opt.badge === 'number' && (
                   <span className={styles.badge}>{opt.badge}</span>
                 )}
@@ -183,5 +173,4 @@ const FloatingMenuModal: React.FC<FloatingMenuModalProps> = ({
     </div>
   );
 };
-
 export default FloatingMenuModal; 

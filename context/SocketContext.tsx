@@ -32,7 +32,6 @@ export const SocketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       reconnectionAttempts: 5
     });
 
-    // Forcing to connect immediately
     newSocket.connect();
 
     newSocket.on('connect', () => {

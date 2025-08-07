@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { User } from '@/screens/ChatScreen/ChatScreen.types';
+import { UI } from '@/constants';
 //@ts-ignore
 import styles from './RemoveUsersModal.module.css';
 
@@ -26,16 +27,15 @@ const RemoveUsersModal: React.FC<RemoveUsersModalProps> = ({
 }) => {
   const [selectedUsers, setSelectedUsers] = useState<string[]>([]);
 
-  // Filter to show only current group members (excluding the admin/creator)
-  const removableUsers = users.filter(user => 
-    !user.isGroup && 
-    currentParticipants.includes(user._id) && 
-    user._id !== myUserId // Admin can't remove themselves
+  const removableUsers = users.filter(user =>
+    !user.isGroup &&
+    currentParticipants.includes(user._id) &&
+    user._id !== myUserId
   );
 
   const handleUserToggle = (userId: string) => {
-    setSelectedUsers(prev => 
-      prev.includes(userId) 
+    setSelectedUsers(prev =>
+      prev.includes(userId)
         ? prev.filter(id => id !== userId)
         : [...prev, userId]
     );
@@ -60,27 +60,26 @@ const RemoveUsersModal: React.FC<RemoveUsersModalProps> = ({
     <div className={styles.modalOverlay}>
       <div className={styles.modalContent}>
         <div className={styles.modalHeader}>
-          <h3>Remove Users from "{groupName}"</h3>
+          <h3>{UI.MODALS.REMOVE_USERS_FROM_GROUP(groupName)}</h3>
           <button className={styles.closeBtn} onClick={handleClose}>
-            ×
+            {UI.BUTTONS.CLOSE}
           </button>
         </div>
 
         <div className={styles.modalBody}>
           {removableUsers.length === 0 ? (
-            <p className={styles.noUsers}>No users available to remove from this group.</p>
+            <p className={styles.noUsers}>{UI.EMPTY_STATES.NO_USERS_AVAILABLE_REMOVE}</p>
           ) : (
             <>
               <p className={styles.instruction}>
-                Select users to remove from the group:
+                {UI.MODALS.SELECT_USERS_TO_REMOVE}
               </p>
               <div className={styles.usersList}>
                 {removableUsers.map(user => (
                   <div
                     key={user._id}
-                    className={`${styles.userItem} ${
-                      selectedUsers.includes(user._id) ? styles.selected : ''
-                    }`}
+                    className={`${styles.userItem} ${selectedUsers.includes(user._id) ? styles.selected : ''
+                      }`}
                     onClick={() => handleUserToggle(user._id)}
                   >
                     <div className={styles.userAvatar}>
@@ -88,14 +87,14 @@ const RemoveUsersModal: React.FC<RemoveUsersModalProps> = ({
                         <img src={user.avatar} alt={user.name} />
                       ) : (
                         <div className={styles.avatarPlaceholder}>
-                          {user.name?.charAt(0)?.toUpperCase() || 'U'}
+                          {user.name?.charAt(0)?.toUpperCase() || UI.LABELS.USER.charAt(0)}
                         </div>
                       )}
                     </div>
                     <div className={styles.userInfo}>
                       <div className={styles.userName}>{user.name}</div>
                       {user.isOnline && (
-                        <div className={styles.onlineStatus}>Online</div>
+                        <div className={styles.onlineStatus}>{UI.STATUS.ONLINE}</div>
                       )}
                     </div>
                     <div className={styles.checkbox}>
@@ -110,14 +109,14 @@ const RemoveUsersModal: React.FC<RemoveUsersModalProps> = ({
 
         <div className={styles.modalFooter}>
           <button className={styles.cancelBtn} onClick={handleClose}>
-            Cancel
+            {UI.BUTTONS.CANCEL}
           </button>
           <button
             className={`${styles.removeBtn} ${styles.dangerBtn}`}
             onClick={handleSubmit}
             disabled={selectedUsers.length === 0}
           >
-            Remove {selectedUsers.length > 0 ? `${selectedUsers.length} ` : ''}User{selectedUsers.length !== 1 ? 's' : ''}
+            {UI.BUTTONS.REMOVE} {selectedUsers.length > 0 ? `${selectedUsers.length} ` : ''}{selectedUsers.length !== 1 ? UI.LABELS.USERS : UI.LABELS.USER}
           </button>
         </div>
       </div>

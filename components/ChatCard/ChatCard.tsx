@@ -25,7 +25,7 @@ interface ChatCardProps {
   participants?: string[];
   createdBy?: string;
   lastSeen?: string | null;
-  myUserId?: string; // Added this prop
+  myUserId?: string;
 }
 
 const ChatCard: React.FC<ChatCardProps> = ({
@@ -53,10 +53,8 @@ const ChatCard: React.FC<ChatCardProps> = ({
   const getMessageContent = () => {
     if (isTyping) return <span className={styles.typingIndicator}>... is typing</span>;
 
-    // Handle old string format
     if (typeof lastMessage === 'string') return lastMessage;
 
-    // Handle new object format
     if (lastMessage?.content) {
       const isMyMessage = lastMessage.senderId === myUserId;
       return isMyMessage ? `You: ${lastMessage.content}` : lastMessage.content;
@@ -72,7 +70,6 @@ const ChatCard: React.FC<ChatCardProps> = ({
       aria-selected={selected}
     >
       <div className={styles.avatarWrapper}>
-        {/* Group Chat - Always show group icon */}
         {isGroup ? (
           <div className={styles.avatarInitials}>
             <HiUserGroup color='var(--color-primaryGradient)' size={22} />
@@ -84,7 +81,6 @@ const ChatCard: React.FC<ChatCardProps> = ({
             )}
           </div>
         ) : (
-          /* Individual Chat - Show avatar or initials with online status */
           <>
             {avatar ? (
               <img

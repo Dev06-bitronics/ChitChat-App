@@ -16,7 +16,6 @@
   100% { background-position: 0% 50%; }
 }
 
-/* Animated SVG Waves */
 .wavesBg {
   position: absolute;
   left: 0; right: 0; bottom: 0;
@@ -93,7 +92,6 @@
 .logo {
   height: 50px;
   margin-bottom: 8px;
-  /* Remove border-radius, background, and box-shadow for a plain image */
   border-radius: 10px;
   background: none;
   box-shadow: none;

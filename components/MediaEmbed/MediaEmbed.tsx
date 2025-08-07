@@ -1,3 +1,4 @@
+import { SOUNDCLOUD_REGEX, SPOTIFY_LINKIFY_REGEX, SPOTIFY_REGEX, TWITTER_REGEX, VIMEO_LINKIFY_REGEX, VIMEO_REGEX, YOUTUBE_ID_REGEX, YOUTUBE_LINKIFY_REGEX } from '@/constants/regex';
 import React from 'react';
 
 interface MediaEmbedProps {
@@ -7,36 +8,36 @@ interface MediaEmbedProps {
   className?: string;
 }
 
-// Utility: YouTube
+// YouTube
 function extractYouTubeId(url: string): string | null {
   const match = url.match(
-    /(?:youtube\.com\/(?:[^\/\n\s]+\/\S+\/|(?:v|e(?:mbed)?|shorts)\/|.*[?&]v=)|youtu\.be\/)([\w-]{11})/
+    YOUTUBE_ID_REGEX
   );
   return match ? match[1] : null;
 }
 
-// Utility: Spotify
+// Spotify
 function extractSpotifyInfo(url: string): { type: 'track' | 'album' | 'playlist' | null, id: string | null } {
-  const match = url.match(/open\.spotify\.com\/(track|album|playlist)\/([a-zA-Z0-9]+)(?:\?|$)/);
+  const match = url.match(SPOTIFY_REGEX);
   if (match) {
     return { type: match[1] as 'track' | 'album' | 'playlist', id: match[2] };
   }
   return { type: null, id: null };
 }
 
-// Utility: SoundCloud (basic detection)
+//SoundCloud (basic detection)
 function isSoundCloudUrl(url: string): boolean {
-  return /soundcloud\.com\//.test(url);
+  return SOUNDCLOUD_REGEX.test(url);
 }
 
-// Utility: Twitter (basic detection)
+//Twitter (basic detection)
 function isTwitterUrl(url: string): boolean {
-  return /twitter\.com\//.test(url);
+  return TWITTER_REGEX.test(url);
 }
 
-// Utility: Vimeo
+//Vimeo
 function extractVimeoId(url: string): string | null {
-  const match = url.match(/vimeo\.com\/(\d+)/);
+  const match = url.match(VIMEO_REGEX);
   return match ? match[1] : null;
 }
 
@@ -50,7 +51,7 @@ const MediaEmbed: React.FC<MediaEmbedProps> = ({ content, openYouTube, setOpenYo
   // YouTube
   if (youTubeId) {
     const youTubeUrl = `https://www.youtube.com/watch?v=${youTubeId}`;
-    const linkText = content.match(/(https?:\/\/(?:www\.)?(?:youtube\.com\/watch\?v=|youtu\.be\/)[\w-]{11})/g)?.[0] || 'YouTube Video';
+    const linkText = content.match(YOUTUBE_LINKIFY_REGEX)?.[0] || 'YouTube Video';
     return (
       <>
         {(!openYouTube && setOpenYouTube) ? (
@@ -105,12 +106,12 @@ const MediaEmbed: React.FC<MediaEmbedProps> = ({ content, openYouTube, setOpenYo
           />
         </div>
         <a
-          href={content.match(/https?:\/\/open\.spotify\.com\/(track|album|playlist)\/[a-zA-Z0-9]+/g)?.[0] || '#'}
+          href={content.match(SPOTIFY_LINKIFY_REGEX)?.[0] || '#'}
           target="_blank"
           rel="noopener noreferrer"
           style={{ color: '#1976d2', textDecoration: 'underline', display: 'block', marginTop: 6 }}
         >
-          {content.match(/https?:\/\/open\.spotify\.com\/(track|album|playlist)\/[a-zA-Z0-9]+/g)?.[0] || 'Spotify Link'}
+          {content.match(SPOTIFY_LINKIFY_REGEX)?.[0] || 'Spotify Link'}
         </a>
       </>
     );
@@ -133,12 +134,12 @@ const MediaEmbed: React.FC<MediaEmbedProps> = ({ content, openYouTube, setOpenYo
           />
         </div>
         <a
-          href={content.match(/https?:\/\/vimeo\.com\/\d+/g)?.[0] || '#'}
+          href={content.match(VIMEO_LINKIFY_REGEX)?.[0] || '#'}
           target="_blank"
           rel="noopener noreferrer"
           style={{ color: '#1976d2', textDecoration: 'underline', display: 'block', marginTop: 6 }}
         >
-          {content.match(/https?:\/\/vimeo\.com\/\d+/g)?.[0] || 'Vimeo Link'}
+          {content.match(VIMEO_LINKIFY_REGEX)?.[0] || 'Vimeo Link'}
         </a>
       </>
     );
@@ -186,7 +187,6 @@ const MediaEmbed: React.FC<MediaEmbedProps> = ({ content, openYouTube, setOpenYo
     );
   }
 
-  // Fallback: not a recognized media link
   return null;
 };
 

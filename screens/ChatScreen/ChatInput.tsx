@@ -3,6 +3,7 @@ import React, { useRef, useEffect } from 'react';
 import styles from './ChatScreen.module.css';
 import { FaPlus, FaSmile } from 'react-icons/fa';
 import { MdSend } from 'react-icons/md';
+import { UI } from '@/constants';
 import Picker from '@emoji-mart/react';
 
 interface ChatInputProps {
@@ -16,6 +17,8 @@ interface ChatInputProps {
   handleEmojiSelect: (emoji: any) => void;
   replyToMessage?: any;
   setReplyToMessage?: (msg: any) => void;
+  editingMessage?: any;
+  onCancelEdit?: () => void;
   disabled?: boolean;
   disabledMessage?: string;
 }
@@ -31,6 +34,8 @@ const ChatInput: React.FC<ChatInputProps> = ({
   handleEmojiSelect,
   replyToMessage,
   setReplyToMessage,
+  editingMessage,
+  onCancelEdit,
   disabled = false,
   disabledMessage = "You cannot send messages",
 }) => {
@@ -59,6 +64,13 @@ const ChatInput: React.FC<ChatInputProps> = ({
         <div className={styles.composerReplyPreview}>
           <div className={styles.composerReplyContent}>{replyToMessage.content}</div>
           <button className={styles.composerReplyCloseBtn} onClick={() => setReplyToMessage && setReplyToMessage(null)} title="Cancel reply">×</button>
+        </div>
+      )}
+      {editingMessage && (
+        <div className={styles.composerEditPreview}>
+          <div className={styles.composerEditLabel}>{UI.MESSAGE.EDITING_MESSAGE}</div>
+          <div className={styles.composerEditContent}>{editingMessage.content}</div>
+          <button className={styles.composerEditCloseBtn} onClick={onCancelEdit} title="Cancel edit">×</button>
         </div>
       )}
       {file && (
@@ -108,11 +120,18 @@ const ChatInput: React.FC<ChatInputProps> = ({
         <div className={styles.chatInputWrapper}>
           <input
             type="text"
-            placeholder={disabled ? disabledMessage : "Type your message"}
+            placeholder={disabled ? disabledMessage : editingMessage ? "Edit your message..." : "Type your message"}
             value={input}
             onChange={e => !disabled && setInput(e.target.value)}
             className={`${styles.chatInput} ${styles.chatInputField}`}
-            onKeyDown={e => e.key === 'Enter' && !disabled && onSend()}
+            onKeyDown={e => {
+              if (disabled) return;
+              if (e.key === 'Enter') {
+                onSend();
+              } else if (e.key === 'Escape' && editingMessage && onCancelEdit) {
+                onCancelEdit();
+              }
+            }}
             disabled={disabled}
           />
           <div style={{ position: 'relative', display: 'inline-block' }}>
@@ -133,12 +152,16 @@ const ChatInput: React.FC<ChatInputProps> = ({
             )}
           </div>
           <button
-            className={`${styles.sendBtn} ${styles.chatSendBtn}`}
+            className={`${styles.sendBtn} ${styles.chatSendBtn} ${editingMessage ? styles.editBtn : ''}`}
             onClick={() => !disabled && onSend()}
-            title="Send"
+            title={editingMessage ? UI.MESSAGE.SAVE_EDIT : "Send"}
             disabled={disabled}
           >
-            <MdSend style={{ color: '#fff' }} size={25} />
+            {editingMessage ? (
+              <span style={{ color: '#fff', fontSize: '14px', fontWeight: 'bold' }}>{UI.MESSAGE.SAVE_EDIT}</span>
+            ) : (
+              <MdSend style={{ color: '#fff' }} size={25} />
+            )}
           </button>
         </div>
       </div>

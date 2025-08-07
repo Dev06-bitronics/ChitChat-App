@@ -7,12 +7,12 @@ export const themeConfig = {
     surface: '#fff',
     text: '#222',
     textSecondary: '#555',
-    textTertiary: '#747881', // For last messages and timestamps
+    textTertiary: '#747881',
     accent: '#1976d2',
     error: '#FF3742',
     border: '#e0e0e0',
-    bubble: '#DBDDE1', // Receiver bubble
-    bubbleSelf: '#e3f2fd', // Sender bubble
+    bubble: '#DBDDE1',
+    bubbleSelf: '#e3f2fd',
     bubbleSelfText: '#fff',
     onlineDot: '#25d366',
     reactionBg: '#e3f2fd',
@@ -29,12 +29,12 @@ export const themeConfig = {
     surface: '#18213a',
     text: '#f4f8fb',
     textSecondary: '#b0bec5',
-    textTertiary: '#747881', // For last messages and timestamps
+    textTertiary: '#747881',
     accent: '#64b5f6',
     error: '#ef9a9a',
     border: '#26304a',
-    bubble: '#DBDDE1', // Receiver bubble
-    bubbleSelf: '#e3f2fd', // Sender bubble
+    bubble: '#DBDDE1',
+    bubbleSelf: '#e3f2fd',
     bubbleSelfText: '#fff',
     onlineDot: '#25d366',
     reactionBg: '#26304a',

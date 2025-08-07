@@ -10,6 +10,7 @@ import NoDataFound from '@/components/NoDataFound/NoDataFound';
 import MessageContextMenu from '@/components/MessageContextMenu/MessageContextMenu';
 import ConfirmationModal from '@/components/ConfirmationModal/ConfirmationModal';
 import { formatTo12Hour, generateInitials, isSameMinute } from '@/utils/helperFunctions';
+import { MESSAGES, UI } from '@/constants';
 
 interface MessageListProps {
   messages: Message[];
@@ -32,10 +33,10 @@ interface MessageListProps {
   onReply?: (messageId: string) => void;
   onThreadReply?: (messageId: string) => void;
   onEdit?: (messageId: string) => void;
-  pinnedMessages: Message[]; // Add this
+  pinnedMessages: Message[];
   onPin: (message: Message) => void;
   onJoinGroup?: (groupId: string) => void;
-  users?: User[]; // Add users to find creator info
+  users?: User[];
 }
 
 const emojiOptions = ['👍', '😂', '❤️', '😮', '😢', '🎉'];
@@ -87,7 +88,6 @@ const MessageList: React.FC<MessageListProps> = ({
     messageId: '',
     messageContent: '',
   });
-  // Close emoji bar on outside click
   useEffect(() => {
     if (!emojiBarOpenId) return;
     const handleClick = (e: MouseEvent) => {
@@ -100,7 +100,6 @@ const MessageList: React.FC<MessageListProps> = ({
     return () => document.removeEventListener('mousedown', handleClick);
   }, [emojiBarOpenId, setEmojiBarOpenId]);
 
-  // Close context menu on outside click
   useEffect(() => {
     if (!contextMenu.open) return;
     const handleClick = (e: MouseEvent) => {
@@ -121,7 +120,7 @@ const MessageList: React.FC<MessageListProps> = ({
     e.stopPropagation();
 
     const rect = e.currentTarget.getBoundingClientRect();
-    const menuWidth = 200; // Approximate width of the context menu
+    const menuWidth = 200;
     const padding = 10;
 
     let x: number;
@@ -155,48 +154,47 @@ const MessageList: React.FC<MessageListProps> = ({
   };
 
   const handleContextMenuAction = (action: string) => {
-  console.log(`${action} for message: ${contextMenu.messageId}`);
+    console.log(`${action} for message: ${contextMenu.messageId}`);
 
-  if (action === 'delete') {
-    const message = messages.find(m => m._id === contextMenu.messageId);
-    setDeleteConfirmation({
-      open: true,
-      messageId: contextMenu.messageId,
-      messageContent: message?.content || 'this message',
-    });
-  } else if (action === 'reply' && onReply) {
-    onReply(contextMenu.messageId);
-  } else if (action === 'threadReply' && onThreadReply) {
-    onThreadReply(contextMenu.messageId);
-  } else if (action === 'edit' && onEdit) {
-    onEdit(contextMenu.messageId);
-  } else if (action === 'pin') {
-    const message = messages.find(m => m._id === contextMenu.messageId);
-    if (message && onPin) {
-      // Pass the original message without toggling - let parent handle it
-      onPin(message);
+    if (action === 'delete') {
+      const message = messages.find(m => m._id === contextMenu.messageId);
+      setDeleteConfirmation({
+        open: true,
+        messageId: contextMenu.messageId,
+        messageContent: message?.content || MESSAGES.CHAT.THIS_MESSAGE,
+      });
+    } else if (action === 'reply' && onReply) {
+      onReply(contextMenu.messageId);
+    } else if (action === 'threadReply' && onThreadReply) {
+      onThreadReply(contextMenu.messageId);
+    } else if (action === 'edit' && onEdit) {
+      onEdit(contextMenu.messageId);
+    } else if (action === 'pin') {
+      const message = messages.find(m => m._id === contextMenu.messageId);
+      if (message && onPin) {
+        onPin(message);
+      }
     }
-  }
 
-  setContextMenu(prev => ({ ...prev, open: false }));
-};
+    setContextMenu(prev => ({ ...prev, open: false }));
+  };
 
-const isMessagePinned = (messageId: string): boolean => {
-  const message = messages.find(m => m._id === messageId);
-  return message?.isPinned ?? false;
-};
+  const isMessagePinned = (messageId: string): boolean => {
+    const message = messages.find(m => m._id === messageId);
+    return message?.isPinned ?? false;
+  };
 
-const isPendingGroup = selectedUser?.isGroup &&
+  const isPendingGroup = selectedUser?.isGroup &&
     selectedUser.participantsStatus?.[myUserId] === 'pending';
 
-console.log('Group status check:', {
-  isGroup: selectedUser?.isGroup,
-  myUserId,
-  participantsStatus: selectedUser?.participantsStatus,
-  myStatus: selectedUser?.participantsStatus?.[myUserId],
-  isPendingGroup,
-  createdBy: selectedUser?.createdBy
-});
+  console.log('Group status check:', {
+    isGroup: selectedUser?.isGroup,
+    myUserId,
+    participantsStatus: selectedUser?.participantsStatus,
+    myStatus: selectedUser?.participantsStatus?.[myUserId],
+    isPendingGroup,
+    createdBy: selectedUser?.createdBy
+  });
 
   if (isPendingGroup) {
     const creator = users.find(u => u._id === selectedUser.createdBy);
@@ -204,13 +202,13 @@ console.log('Group status check:', {
       <div className={styles.groupJoinContainer}>
         <div className={styles.groupJoinInfo}>
           <h3>{selectedUser.name}</h3>
-          <p>Created by: {creator?.name || 'Unknown user'}</p>
-          <p>{selectedUser.participants?.length || 0} members</p>
+          <p>{MESSAGES.CHAT.CREATED_BY} {creator?.name || MESSAGES.CHAT.UNKNOWN_USER}</p>
+          <p>{selectedUser.participants?.length || 0} {MESSAGES.CHAT.MEMBERS}</p>
           <button
             className={styles.joinGroupButton}
             onClick={() => onJoinGroup?.(selectedUser._id)}
           >
-            Join Group
+            {MESSAGES.CHAT.JOIN_GROUP}
           </button>
         </div>
       </div>
@@ -218,7 +216,7 @@ console.log('Group status check:', {
   }
 
   if (!messages.length) {
-    return <NoDataFound message="No chats here yet..." />;
+    return <NoDataFound message={MESSAGES.CHAT.NO_CHATS_YET} />;
   }
 
   console.log('Rendering MessageContextMenu with:', contextMenu);
@@ -226,17 +224,14 @@ console.log('Group status check:', {
   // Filter pinned messages for current conversation only
   const seenMessageIds = new Set<string>();
   const currentConversationPinnedMessages = selectedUser ? messages.filter(msg => {
-    // Skip if message is not pinned
     if (!msg.isPinned) {
       return false;
     }
 
-    // Check if message belongs to current conversation
     const isCurrentConversation =
       (msg.senderId?._id === myUserId && msg.receiverId?._id === selectedUser._id) ||
       (msg.senderId?._id === selectedUser._id && msg.receiverId?._id === myUserId);
 
-    // Skip if not in current conversation
     if (!isCurrentConversation) {
       return false;
     }
@@ -246,8 +241,7 @@ console.log('Group status check:', {
     if (seenMessageIds.has(messageId)) {
       return false;
     }
-    
-    // Add to seen messages
+
     seenMessageIds.add(messageId);
 
     console.log('Processing pinned message:', {
@@ -328,7 +322,6 @@ console.log('Group status check:', {
           flexDirection: 'column' as const,
         };
 
-        // Check if message is pinned
         const isPinned = isMessagePinned(msg._id || msg._id);
 
         if (isMine) {
@@ -341,9 +334,6 @@ console.log('Group status check:', {
                 ...bubbleStyle,
               }}
             >
-
-              {/* My message content (no avatar) */}
-              {/* Reactions bar above the message bubble */}
               {uniqueReactions.length > 0 && (
                 <div className={styles.reactionsBar} style={{ marginBottom: 2 }}>
                   {uniqueReactions.map((emoji, i) => (
@@ -351,7 +341,6 @@ console.log('Group status check:', {
                   ))}
                 </div>
               )}
-              {/* For both myMsg and otherMsg, wrap the message bubble and emoji bar in a relative container: */}
               <div style={{ position: 'relative', width: 'fit-content', maxWidth: 340 }}>
                 {/* Three dots menu button - positioned to the left for my messages */}
                 <button
@@ -362,7 +351,7 @@ console.log('Group status check:', {
                     transform: 'translateY(-50%)',
                   }}
                   onClick={(e) => handleMessageMenuClick(e, msg._id, true)}
-                  title="Message options"
+                  title={UI.MESSAGE.MESSAGE_OPTIONS}
                 >
                   <BsThreeDotsVertical size={16} />
                 </button>
@@ -413,9 +402,7 @@ console.log('Group status check:', {
                       );
                     })}
                   </div>
-                )}
-                {/* Replied message bubble INSIDE the blue bubble, no border, no margin */}
-                {repliedMessage && (
+                )}                {repliedMessage && (
                   <div className={styles.repliedMessageBubble} style={{ background: '#f5f5f7', borderRadius: 8, padding: '6px 10px', marginBottom: 0, maxWidth: '100%' }}>
                     <div style={{ fontSize: 13, color: '#222', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                       {repliedMessage.content}
@@ -424,7 +411,7 @@ console.log('Group status check:', {
                 )}
                 <div
                   className={`${styles.myMsg} ${isPinned ? styles.pinned : ''}`}
-                  id={`message-${msg._id || msg._id}`} // Add support for both id formats
+                  id={`message-${msg._id || msg._id}`}
                   style={{
                     maxWidth: 340,
                     wordBreak: 'break-word',
@@ -450,7 +437,7 @@ console.log('Group status check:', {
                     )}
                     {textBelow && (
                       <div className={styles.chatMsgTextBelow}>
-                        {textBelow} {msg.edited && <span style={{ color: '#888', fontSize: 12, marginLeft: 4 }}>(edited)</span>}
+                        {textBelow} {msg.edited && <span style={{ color: '#888', fontSize: 12, marginLeft: 4 }}>{MESSAGES.CHAT.EDITED}</span>}
                       </div>
                     )}
                     {mediaLink && (
@@ -460,7 +447,7 @@ console.log('Group status check:', {
                       <div className={styles.chatMsgMediaWrapper}>
                         <img
                           src={msg?.fileUrl}
-                          alt={msg?.fileName || 'sent image'}
+                          alt={msg?.fileName || MESSAGES.CHAT.SENT_IMAGE}
                           className={styles.chatImageThumb}
                           style={{ cursor: 'pointer', maxWidth: 180, maxHeight: 180, borderRadius: 8, boxShadow: '0 2px 8px #0002' }}
                           onClick={() => setImageModal({ open: true, url: msg?.fileUrl!, name: msg?.fileName })}
@@ -471,7 +458,7 @@ console.log('Group status check:', {
                       <div className={styles.chatMsgMediaWrapper}>
                         <audio controls className={styles.chatAudioPlayer}>
                           <source src={msg?.fileUrl} type={msg?.fileType || 'audio/mpeg'} />
-                          Your browser does not support the audio element.
+                          {MESSAGES.CHAT.AUDIO_NOT_SUPPORTED}
                         </audio>
                         <div className={styles.fileMeta}>{msg?.fileName} {msg?.fileSize ? `(${(msg?.fileSize / 1024 / 1024).toFixed(2)} MB)` : ''}</div>
                       </div>
@@ -480,7 +467,7 @@ console.log('Group status check:', {
                       <div className={styles.chatMsgMediaWrapper}>
                         <video controls className={styles.chatVideoPlayer}>
                           <source src={msg?.fileUrl} type={msg?.fileType || 'video/mp4'} />
-                          Your browser does not support the video tag.
+                          {MESSAGES.CHAT.VIDEO_NOT_SUPPORTED}
                         </video>
                         <div className={styles.fileMeta}>{msg?.fileName} {msg?.fileSize ? `(${(msg?.fileSize / 1024 / 1024).toFixed(2)} MB)` : ''}</div>
                       </div>
@@ -530,7 +517,6 @@ console.log('Group status check:', {
                 position: 'relative',
               }}
             >
-              {/* Avatar for other user only, and only for last in group, as first child */}
               {isLastInGroup ? (
                 <div style={{
                   marginRight: 8,
@@ -562,7 +548,6 @@ console.log('Group status check:', {
                 <div style={{ width: 32, marginRight: 8 }} />
               )}
               <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'flex-start', position: 'relative' }}>
-                {/* Reactions bar above the message bubble */}
                 {uniqueReactions.length > 0 && (
                   <div className={styles.reactionsBar} style={{ marginBottom: 2 }}>
                     {uniqueReactions.map((emoji, i) => (
@@ -581,7 +566,7 @@ console.log('Group status check:', {
                       transform: 'translateY(-50%)',
                     }}
                     onClick={(e) => handleMessageMenuClick(e, msg._id, false)}
-                    title="Message options"
+                    title={UI.MESSAGE.MESSAGE_OPTIONS}
                   >
                     <BsThreeDotsVertical size={16} />
                   </button>
@@ -633,7 +618,6 @@ console.log('Group status check:', {
                       })}
                     </div>
                   )}
-                  {/* Replied message bubble INSIDE the grey bubble, no border, no margin */}
                   {repliedMessage && (
                     <div className={styles.repliedMessageBubble} style={{ background: '#f5f5f7', borderRadius: 8, padding: '6px 10px', marginBottom: 0, maxWidth: '100%' }}>
                       <div style={{ fontSize: 13, color: '#222', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
@@ -643,7 +627,7 @@ console.log('Group status check:', {
                   )}
                   <div
                     className={`${styles.otherMsg} ${isPinned ? styles.pinned : ''}`}
-                    id={`message-${msg._id || msg._id}`} 
+                    id={`message-${msg._id || msg._id}`}
                     style={{
                       maxWidth: 340,
                       wordBreak: 'break-word',
@@ -668,7 +652,7 @@ console.log('Group status check:', {
                       )}
                       {textBelow && (
                         <div className={styles.chatMsgTextBelow}>
-                          {textBelow} {msg.edited && <span style={{ color: '#888', fontSize: 12, marginLeft: 4 }}>(edited)</span>}
+                          {textBelow} {msg.edited && <span style={{ color: '#888', fontSize: 12, marginLeft: 4 }}>{MESSAGES.CHAT.EDITED}</span>}
                         </div>
                       )}
                       {mediaLink && (
@@ -678,7 +662,7 @@ console.log('Group status check:', {
                         <div className={styles.chatMsgMediaWrapper}>
                           <img
                             src={msg?.fileUrl}
-                            alt={msg?.fileName || 'sent image'}
+                            alt={msg?.fileName || MESSAGES.CHAT.SENT_IMAGE}
                             className={styles.chatImageThumb}
                             style={{ cursor: 'pointer', maxWidth: 180, maxHeight: 180, borderRadius: 8, boxShadow: '0 2px 8px #0002' }}
                             onClick={() => setImageModal({ open: true, url: msg?.fileUrl!, name: msg?.fileName })}
@@ -689,7 +673,7 @@ console.log('Group status check:', {
                         <div className={styles.chatMsgMediaWrapper}>
                           <audio controls className={styles.chatAudioPlayer}>
                             <source src={msg?.fileUrl} type={msg?.fileType || 'audio/mpeg'} />
-                            Your browser does not support the audio element.
+                            {MESSAGES.CHAT.AUDIO_NOT_SUPPORTED}
                           </audio>
                           <div className={styles.fileMeta}>{msg?.fileName} {msg?.fileSize ? `(${(msg?.fileSize / 1024 / 1024).toFixed(2)} MB)` : ''}</div>
                         </div>
@@ -698,7 +682,7 @@ console.log('Group status check:', {
                         <div className={styles.chatMsgMediaWrapper}>
                           <video controls className={styles.chatVideoPlayer}>
                             <source src={msg?.fileUrl} type={msg?.fileType || 'video/mp4'} />
-                            Your browser does not support the video tag.
+                            {MESSAGES.CHAT.VIDEO_NOT_SUPPORTED}
                           </video>
                           <div className={styles.fileMeta}>{msg?.fileName} {msg?.fileSize ? `(${(msg?.fileSize / 1024 / 1024).toFixed(2)} MB)` : ''}</div>
                         </div>
@@ -742,7 +726,6 @@ console.log('Group status check:', {
         <div className={styles.typingIndicator}>{selectedUser.name} is typing...</div>
       )}
 
-      {/* Message Context Menu */}
       <MessageContextMenu
         open={contextMenu.open}
         x={contextMenu.x}
@@ -759,13 +742,12 @@ console.log('Group status check:', {
         onDelete={() => handleContextMenuAction('delete')}
       />
 
-      {/* Delete Confirmation Modal */}
       <ConfirmationModal
         open={deleteConfirmation.open}
-        title="Delete Message"
-        message={`Are you sure you want to permanently delete this message?`}
-        confirmText="DELETE"
-        cancelText="Cancel"
+        title={MESSAGES.CHAT.DELETE_MESSAGE_TITLE}
+        message={MESSAGES.CHAT.DELETE_MESSAGE_CONFIRM}
+        confirmText={UI.BUTTONS.DELETE}
+        cancelText={UI.BUTTONS.CANCEL}
         onConfirm={handleConfirmDelete}
         onCancel={handleCancelDelete}
       />

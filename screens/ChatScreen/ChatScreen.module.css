@@ -1452,6 +1452,59 @@
   margin-left: 8px;
   padding: 0 4px;
 }
+
+/* Edit message preview styles */
+.composerEditPreview {
+  background: #fff3cd;
+  border-left: 4px solid #ffc107;
+  padding: 8px 12px 8px 10px;
+  margin-bottom: 6px;
+  border-radius: 6px 8px 8px 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  position: relative;
+}
+
+.composerEditLabel {
+  font-weight: bold;
+  color: #856404;
+  font-size: 0.85em;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.composerEditContent {
+  color: #856404;
+  font-size: 0.95em;
+  flex: 1;
+  white-space: pre-line;
+  opacity: 0.8;
+}
+
+.composerEditCloseBtn {
+  background: none;
+  border: none;
+  color: #856404;
+  font-size: 1.2em;
+  cursor: pointer;
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  padding: 0 4px;
+}
+
+.composerEditCloseBtn:hover {
+  color: #533f03;
+}
+
+.editBtn {
+  background: #ffc107 !important;
+}
+
+.editBtn:hover {
+  background: #e0a800 !important;
+}
 .chatMsgReplyBubble {
   background: #e3e9f7;
   border-left: 4px solid #1976d2;
